@@ -17,7 +17,11 @@ class Ablation():
     '''
     
     def __init__(self, config, selected_neurons, resume):
+        # initialize selected neuron list
+        self.neuron_list = selected_neurons
+        
         # setup data_loader instances
+        
         self.data_loader = getattr(module_data, config['data_loader']['type'])(
             config['data_loader']['args']['data_dir'],
             batch_size=512,
@@ -29,7 +33,7 @@ class Ablation():
 
         # build model architecture
         self.model = get_instance(module_arch, 'arch', config)
-    #    model.summary()
+        self.model.summary()
 
         # get function handles of loss and metrics
         self.loss_fn = getattr(module_loss, config['loss'])
@@ -48,10 +52,12 @@ class Ablation():
         
         # register hook
 #        self.model.register_forward_hook(print)
-#        self.model.eval()
-#        for index, layer in enumerate(self.model):
-#            print(index, layer)
-
+        self.model.eval()
+        for name, param in self.model.state_dict().items():
+            print(name, param.data.shape)
+#        for layer, (name, module) in enumerate(self.model._modules.items()):
+#            if isinstance(module, torch.nn.modules.conv.Conv2d):
+#                module.register_hook(print)
 
     def evaluate(self):
         total_loss = 0.0
@@ -77,6 +83,21 @@ class Ablation():
         log.update({met.__name__ : total_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
         print(log)
 
+    def ablate_neuron(self, neuron_idx):
+        """Given a model, prune the neuron to have 0 activation map"""
+
+
+        return 
+
+    def ablation_test(self):
+        for neuron in self.neuron_list:
+            # prune neuron from self.model
+            ablate_neuron(neuron)  
+            log.update(evaluate())
+        return log
+
+    def visualize(self):
+        """Plot the accuracy plot"""
 
 
 if __name__ == '__main__':
@@ -96,4 +117,4 @@ if __name__ == '__main__':
     
     selected_neurons = None
     ablation = Ablation(config, selected_neurons, args.resume)
-    ablation.evaluate()
+    # ablation.evaluate()
