@@ -22,7 +22,7 @@ def main(config, resume):
 
     # build model architecture
     model = get_instance(module_arch, 'arch', config)
-    model.summary()
+#     model.summary()
 
     # get function handles of loss and metrics
     loss_fn = getattr(module_loss, config['loss'])
@@ -38,6 +38,9 @@ def main(config, resume):
     # prepare model for testing
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
+    
+    # register hook
+#     model.register_forward_hook(print)
     model.eval()
 
     total_loss = 0.0
