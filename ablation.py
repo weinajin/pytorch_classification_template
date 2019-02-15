@@ -8,6 +8,7 @@ import model.metric as module_metric
 import model.model as module_arch
 from train import get_instance
 
+import numpy as np
 class Ablation():
     '''
     ablation test: given a ordered list of neurons, ablate one by one, and save the class-specific accuracy.
@@ -51,13 +52,21 @@ class Ablation():
         self.model = self.model.to(self.device)
         
         # register hook
-#        self.model.register_forward_hook(print)
+        def hook_func(module, ipt, opt):
+#            for layer in module.modules():
+#                print(layer, type(layer))#==torch.nn.modules.conv.Conv2D)
+            print(ipt[0].shape)
+            print(opt[0].shape)
+            print(module)
+            print(' ')
+#            print(np.array(ipt).shape)
+#            print(opt.data.cpu().numpy().shape)
         self.model.eval()
-        for name, param in self.model.state_dict().items():
-            print(name, param.data.shape)
-#        for layer, (name, module) in enumerate(self.model._modules.items()):
-#            if isinstance(module, torch.nn.modules.conv.Conv2d):
-#                module.register_hook(print)
+        
+#        self.model.register_forward_hook(hook_func)
+        for m in self.model.children():
+            m.register_forward_hook(hook_func)
+
 
     def evaluate(self):
         total_loss = 0.0
@@ -97,9 +106,7 @@ class Ablation():
         return log
 
     def visualize(self):
-        """Plot the accuracy plot"""
-
-
+        """"""
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
 
@@ -117,4 +124,4 @@ if __name__ == '__main__':
     
     selected_neurons = None
     ablation = Ablation(config, selected_neurons, args.resume)
-    # ablation.evaluate()
+    ablation.evaluate()
