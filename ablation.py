@@ -62,10 +62,12 @@ class Ablation():
 #            print(np.array(ipt).shape)
 #            print(opt.data.cpu().numpy().shape)
         self.model.eval()
-        
-#        self.model.register_forward_hook(hook_func)
-        for m in self.model.children():
-            m.register_forward_hook(hook_func)
+        self.layer_neuron_num = {} # a dict {layer_0: num_neuron} record the number of neurons in each layer
+        for a, m in self.model._modules.items():
+            print(a)
+            print(m)
+#        for m in self.model.children(): # return immediate children
+#            m.register_forward_hook(hook_func)
 
 
     def evaluate(self):
