@@ -8,6 +8,8 @@ import model.metric as module_metric
 import model.model as module_arch
 from train import get_instance
 
+import numpy as np
+
 class Ablation():
     '''
     ablation test: given a ordered list of neurons, ablate one by one, and save the class-specific accuracy.
@@ -16,7 +18,10 @@ class Ablation():
     
     '''
     
-    def __init__(self, config, selected_neurons, resume):
+    def __init__(self, config, neuron_seq, resume):
+        # a list of neurons with sequence
+        self.neuron_seq = neuron_seq
+
         # setup data_loader instances
         self.data_loader = getattr(module_data, config['data_loader']['type'])(
             config['data_loader']['args']['data_dir'],
@@ -52,6 +57,7 @@ class Ablation():
 #        for index, layer in enumerate(self.model):
 #            print(index, layer)
 
+        self.ablation(1, 5)
 
     def evaluate(self):
         total_loss = 0.0
@@ -76,6 +82,28 @@ class Ablation():
         log = {'loss': total_loss / n_samples}
         log.update({met.__name__ : total_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
         print(log)
+
+    def ablation(self, layer_idx, neuron_idx):
+        '''ablate one neuron at a time
+        '''
+        # check layer_idx within the range
+        # todo
+
+        # get the layer
+        _, layer = list(self.model._modules.items())[layer_idx]
+        print(layer)
+        # set the neuron weight to 0, weight 4D (output_channel, input_channel, kernel_w, kernel_h)
+        new_weights = layer.weight.data.cpu().numpy()
+        print(new_weights.shape)
+        new_weights[neuron_idx] = np.zeros(new_weights.shape[0])
+        layer.weight.data = torch.from_numpy(new_weights).cuda()
+        print(layer.weight.data.cpu().numpy(new_weights)[layer_idx])
+
+        # set the bias to 0, bias shape
+        bias_numpy = layer.bias.data.cpu().numpy()
+        print(bias.shape)
+        bias_numpy[neuron_idx] = np.zeros(bias.shape[0])
+        layer.bias.data = torch.from_numpy(bias_numpy).cuda()
 
 
 
