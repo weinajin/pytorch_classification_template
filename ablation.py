@@ -94,17 +94,15 @@ class Ablation():
         print(layer)
         # set the neuron weight to 0, weight 4D (output_channel, input_channel, kernel_w, kernel_h)
         new_weights = layer.weight.data.cpu().numpy()
-        print(new_weights.shape)
-        new_weights[neuron_idx] = np.zeros(new_weights.shape[0])
+#        print(new_weights.shape)
+        new_weights[neuron_idx,:,:,:] = 0
         layer.weight.data = torch.from_numpy(new_weights).cuda()
-        print(layer.weight.data.cpu().numpy(new_weights)[layer_idx])
-
+#        print(layer.weight.data.cpu().numpy()[neuron_idx])
         # set the bias to 0, bias shape
         bias_numpy = layer.bias.data.cpu().numpy()
-        print(bias.shape)
-        bias_numpy[neuron_idx] = np.zeros(bias.shape[0])
+        bias_numpy[neuron_idx] = 0
         layer.bias.data = torch.from_numpy(bias_numpy).cuda()
-
+#        print(layer.bias.data.cpu().numpy()[neuron_idx])
 
 
 if __name__ == '__main__':
