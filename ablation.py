@@ -51,17 +51,8 @@ class Ablation():
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = self.model.to(self.device)
         
-        # register hook
-        def hook_func(module, ipt, opt):
-#            for layer in module.modules():
-#                print(layer, type(layer))#==torch.nn.modules.conv.Conv2D)
-            print(ipt[0].shape)
-            print(opt[0].shape)
-            print(module)
-            print(' ')
-#            print(np.array(ipt).shape)
-#            print(opt.data.cpu().numpy().shape)
         self.model.eval()
+        # get nb of neurons in each layer
         self.neuron_nb = {} # a dict {layer_0: num_neuron} record the number of neurons in each layer
         for a, m in self.model._modules.items():
             try:
@@ -74,6 +65,7 @@ class Ablation():
 
 
     def evaluate(self):
+        self.ablate_neuron()
         total_loss = 0.0
         total_metrics = torch.zeros(len(self.metric_fns))
 
@@ -97,10 +89,26 @@ class Ablation():
         log.update({met.__name__ : total_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
         print(log)
 
-    def ablate_neuron(self, neuron_idx):
+    def ablate_neuron(self, layer_idx=None, neuron_idx=None):
         """Given a model, prune the neuron to have 0 activation map"""
 
-
+        # hook func
+        def hook_func(module, ipt, opt):
+#            for layer in module.modules():
+#                if isinstance(layer, nn.Conv2D) and layer_idx:
+#                    model 
+#                print(layer, type(layer))#==torch.nn.modules.conv.Conv2D)
+            print(ipt[0].shape)
+            print(opt[0].shape)
+            print(module)
+            print(' ')
+            new_opt = np.zeros(shape = opt[0].shape)
+            return (new_opt,)
+#            print(np.array(ipt).shape)
+#            print(opt.data.cpu().numpy().shape)
+        # register hook for the target layer
+        for m in self.model.children(): # return immediate children
+            m.register_forward_hook(hook_func)
         return 
 
     def ablation_test(self):
