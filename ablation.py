@@ -96,7 +96,7 @@ class Ablation():
     def ablate_neuron(self, layer_idx, neuron_idx):
         """Given a model, prune the neuron to have 0 activation map, ablate one neuron at a time
         """
-        
+        print(layer_idx, neuron_idx) 
         # check layer_idx within the range
         if layer_idx >= len(self.neuron_nb):
             print('layer_idx out of range')
@@ -105,11 +105,11 @@ class Ablation():
 
         # get the layer
         _, layer = list(self.model._modules.items())[layer_idx]
-        print(layer)
+
         # set the neuron weight to 0, weight 4D (output_channel, input_channel, kernel_w, kernel_h)
         new_weights = layer.weight.data.cpu().numpy()
 #        print(new_weights.shape)
-        new_weights[neuron_idx,:,:,:] = 0
+        new_weights[neuron_idx] = 0
         layer.weight.data = torch.from_numpy(new_weights).cuda()
 #        print(layer.weight.data.cpu().numpy()[neuron_idx])
         # set the bias to 0, bias shape
@@ -130,7 +130,7 @@ class Ablation():
 
             print(' ')
         # register hook for the target layer
-        layer.register_forward_hook(hook_func)
+#        layer.register_forward_hook(hook_func)
 
     def random_ablation(self):
         '''Generate a list of sequences of neurons to be randomly ablated.
@@ -150,10 +150,11 @@ class Ablation():
         '''ablate the neurons by their sequences'''
         
         for neuron in self.neuron_seq:
-            print(neuron)
+#            print(neuron)
             self.ablate_neuron(*neuron)
-            log.update(self.evaluate())
-        return log
+            self.evaluate()
+#            log.update(self.evaluate())
+#        return log
 
 
     def visualize(self):
