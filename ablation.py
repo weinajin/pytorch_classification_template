@@ -9,6 +9,7 @@ import model.model as module_arch
 from train import get_instance
 
 import numpy as np
+from random import shuffle
 
 class Ablation():
     '''
@@ -19,11 +20,7 @@ class Ablation():
     '''
     
     def __init__(self, config, neuron_seq, resume):
-        # a list of neurons with sequence
-        self.neuron_seq = neuron_seq
-
         # setup data_loader instances
-        
         self.data_loader = getattr(module_data, config['data_loader']['type'])(
             config['data_loader']['args']['data_dir'],
             batch_size=512,
@@ -62,6 +59,14 @@ class Ablation():
             except:
                 self.neuron_nb[a] = m.out_features # linear layers
         print(self.neuron_nb)
+        
+        # a list of neurons with sequence
+        self.neuron_seq = self.random_ablation()
+#        # print out shape of activation map for each layer, just for sanity check
+#        def print_activation_map(module, ipt, opt):
+#            print(opt[0].shape)
+#        for m in self.model.children():
+#            m.register_forward_hook(print_activation_map)
 
 
     def evaluate(self):
@@ -120,24 +125,35 @@ class Ablation():
 #                    model 
 #                print(layer, type(layer))#==torch.nn.modules.conv.Conv2D)
             print(opt[0].shape)
-            print(opt[0][neuron_idx].sum())
+            print(opt[0][neuron_idx].sum(), opt[0].sum())
             print(opt[0][neuron_idx])
 
             print(' ')
         # register hook for the target layer
         layer.register_forward_hook(hook_func)
 
+    def random_ablation(self):
+        '''Generate a list of sequences of neurons to be randomly ablated.
+        each neuron representa as a tuple (layer_idx, neuron_idx).
+        The neurons do not include the last fc layers.'''
+        abl_seq = []
+        for i, (l_name, n_nb) in enumerate(list(self.neuron_nb.items())[:-1]):
+            layer_seq = [(i, n) for n in range(n_nb)]
+            abl_seq += layer_seq
+        shuffle(abl_seq)
+#        print(abl_seq)
+        return abl_seq
+
+
+        
     def ablation(self):
         '''ablate the neurons by their sequences'''
         
-        self.ablate_neuron(1, 5)
-
-#        for neuron in self.neuron_seq:
-#            layer_idx = neuron.l
-#            neuron_idx = neuron.n
-#            self.ablate_neuron(layer_idx, neuron_idx)
-#            log.update(evaluate())
-#        return log
+        for neuron in self.neuron_seq:
+            print(neuron)
+            self.ablate_neuron(*neuron)
+            log.update(self.evaluate())
+        return log
 
 
     def visualize(self):
@@ -159,4 +175,6 @@ if __name__ == '__main__':
     
     selected_neurons = None
     abl = Ablation(config, selected_neurons, args.resume)
+#    abl.ablation()
+#    abl.evaluate()
     abl.ablation()
