@@ -53,6 +53,7 @@ class Ablation():
         self.model = self.model.to(self.device)
         
         self.model.eval()
+
         # get nb of neurons in each layer
         self.neuron_nb = {} # a dict {layer_0: num_neuron} record the number of neurons in each layer
         for a, m in self.model._modules.items():
@@ -61,13 +62,9 @@ class Ablation():
             except:
                 self.neuron_nb[a] = m.out_features # linear layers
         print(self.neuron_nb)
-#        for m in self.model.children(): # return immediate children
-#            m.register_forward_hook(hook_func)
 
-        self.ablation(1, 5)
 
     def evaluate(self):
-        self.ablate_neuron()
         total_loss = 0.0
         total_metrics = torch.zeros(len(self.metric_fns))
 
@@ -91,32 +88,15 @@ class Ablation():
         log.update({met.__name__ : total_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
         print(log)
 
-    def ablate_neuron(self, layer_idx=None, neuron_idx=None):
-        """Given a model, prune the neuron to have 0 activation map"""
-
-        # hook func
-        def hook_func(module, ipt, opt):
-#            for layer in module.modules():
-#                if isinstance(layer, nn.Conv2D) and layer_idx:
-#                    model 
-#                print(layer, type(layer))#==torch.nn.modules.conv.Conv2D)
-            print(ipt[0].shape)
-            print(opt[0].shape)
-            print(module)
-            print(' ')
-            new_opt = np.zeros(shape = opt[0].shape)
-            return (new_opt,)
-#            print(np.array(ipt).shape)
-#            print(opt.data.cpu().numpy().shape)
-        # register hook for the target layer
-        for m in self.model.children(): # return immediate children
-            m.register_forward_hook(hook_func)
-        return 
-    def ablation(self, layer_idx, neuron_idx):
-        '''ablate one neuron at a time
-        '''
+    def ablate_neuron(self, layer_idx, neuron_idx):
+        """Given a model, prune the neuron to have 0 activation map, ablate one neuron at a time
+        """
+        
         # check layer_idx within the range
-        # todo
+        if layer_idx >= len(self.neuron_nb):
+            print('layer_idx out of range')
+        if neuron_idx >= list(self.neuron_nb.items())[layer_idx][1]:
+            print('neuron_idx out of range')
 
         # get the layer
         _, layer = list(self.model._modules.items())[layer_idx]
@@ -133,12 +113,32 @@ class Ablation():
         layer.bias.data = torch.from_numpy(bias_numpy).cuda()
 #        print(layer.bias.data.cpu().numpy()[neuron_idx])
 
-    def ablation_test(self):
-        for neuron in self.neuron_list:
-            # prune neuron from self.model
-            ablate_neuron(neuron)  
-            log.update(evaluate())
-        return log
+        # hook func, output the activation map for sanity check
+        def hook_func(module, ipt, opt):
+#            for layer in module.modules():
+#                if isinstance(layer, nn.Conv2D) and layer_idx:
+#                    model 
+#                print(layer, type(layer))#==torch.nn.modules.conv.Conv2D)
+            print(opt[0].shape)
+            print(opt[0][neuron_idx].sum())
+            print(opt[0][neuron_idx])
+
+            print(' ')
+        # register hook for the target layer
+        layer.register_forward_hook(hook_func)
+
+    def ablation(self):
+        '''ablate the neurons by their sequences'''
+        
+        self.ablate_neuron(1, 5)
+
+#        for neuron in self.neuron_seq:
+#            layer_idx = neuron.l
+#            neuron_idx = neuron.n
+#            self.ablate_neuron(layer_idx, neuron_idx)
+#            log.update(evaluate())
+#        return log
+
 
     def visualize(self):
         """"""
@@ -158,5 +158,5 @@ if __name__ == '__main__':
         os.environ["CUDA_VISIBLE_DEVICES"]=args.device
     
     selected_neurons = None
-    ablation = Ablation(config, selected_neurons, args.resume)
-    ablation.evaluate()
+    abl = Ablation(config, selected_neurons, args.resume)
+    abl.ablation()
