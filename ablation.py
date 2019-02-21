@@ -11,6 +11,7 @@ from train import get_instance
 import numpy as np
 from random import shuffle
 import matplotlib.pyplot as plt
+import copy
 
 class Ablation():
     '''
@@ -33,7 +34,7 @@ class Ablation():
 
         # build model architecture
         self.model = get_instance(module_arch, 'arch', config)
-        self.model.summary()
+#        self.model.summary()
 
         # get function handles of loss and metrics
         self.loss_fn = getattr(module_loss, config['loss'])
@@ -59,10 +60,10 @@ class Ablation():
                 self.neuron_nb[a] = m.out_channels # conv layers
             except:
                 self.neuron_nb[a] = m.out_features # linear layers
-        print(self.neuron_nb)
+#        print(self.neuron_nb)
         
         # a list of neurons with sequence
-        self.neuron_seq = self.random_ablation()
+        self.neuron_seq = neuron_seq #self.random_ablation()
 #        # print out shape of activation map for each layer, just for sanity check
 #        def print_activation_map(module, ipt, opt):
 #            print(opt[0].shape)
@@ -70,6 +71,9 @@ class Ablation():
 #            m.register_forward_hook(print_activation_map)
 
         self.abl_log = []
+        # if accumulate the ablation, then the model will be ablated with all the neurons in the neuron_seq
+        # if not accumulate, then only one neuron in the neuron_seq will be ablated each trial
+        self.abl_accumulate = True  
 
     def evaluate(self):
         total_loss = 0.0
@@ -96,10 +100,14 @@ class Ablation():
         print(log)
         return log
 
+    def get_neuron_nb(self):
+        return self.neuron_nb
+    def get_original_metric(self):
+        return self.evaluate()
+
     def ablate_neuron(self, layer_idx, neuron_idx):
         """Given a model, prune the neuron to have 0 activation map, ablate one neuron at a time
         """
-        print(layer_idx, neuron_idx) 
         # check layer_idx within the range
         if layer_idx >= len(self.neuron_nb):
             print('layer_idx out of range')
@@ -135,21 +143,7 @@ class Ablation():
         # for sanity check that the activation of the selected neuron are 0s. register hook for the target layer
 #        layer.register_forward_hook(hook_func)
 
-    def random_ablation(self):
-        '''Generate a list of sequences of neurons to be randomly ablated.
-        each neuron representa as a tuple (layer_idx, neuron_idx).
-        The neurons do not include the last fc layers.'''
-        abl_seq = []
-        for i, (l_name, n_nb) in enumerate(list(self.neuron_nb.items())[:-1]):
-            layer_seq = [(i, n) for n in range(n_nb)]
-            abl_seq += layer_seq
-#            if len(abl_seq) == 10:
-#                break
-        shuffle(abl_seq)
-        return abl_seq
 
-
-        
     def ablation(self):
         '''ablate the neurons by their sequences'''
         for neuron in self.neuron_seq:
@@ -159,22 +153,66 @@ class Ablation():
         return self.abl_log
 
 
+def random_ablation(neuron_nb):
+    '''Generate a list of sequences of neurons to be randomly ablated.
+    each neuron representa as a tuple (layer_idx, neuron_idx).
+    The neurons do not include the last fc layers.'''
+    abl_seq = []
+    for i, (l_name, n_nb) in enumerate(list(neuron_nb.items())[:-1]):
+        layer_seq = [(i, n) for n in range(n_nb)]
+        abl_seq += layer_seq
+#        if len(abl_seq) >= 5:
+#            break
+    shuffle(abl_seq)
+    return abl_seq
 
-def visualize(abl_logs, class_specific = False):
+
+def visualize(abl_logs, accumulate, class_specific = False):
     '''
     visualize the neuron ablation w.r.t the evaluating metrics.
     the abl_log is a list of neurons ablated sequencially, (neuron, abl_log)'''
-    accs = []
-    for log in abl_logs:
-        acc = [list(i[1].items())[1][1] for i in log]
-        accs.append(acc)
-    colormap = plt.cm.gist_ncar
-    plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(accs))])
-    for acc in accs:
-        plt.plot(acc)
-    plt.xlabel('Number of randomly ablated neurons')
-    plt.ylabel('Accuracy')
+    accs = [log[1]['overal_acc'] for log in abl_logs]
+    if accumulate:
+        colormap = plt.cm.gist_ncar
+        plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(accs))])
+        for acc in accs:
+            plt.plot(acc)
+        plt.xlabel('Number of randomly ablated neurons')
+        plt.ylabel('Accuracy')
+    else:
+        acc_drop = accs[0] - np.array(accs[1:])
+        plt.hlines(accs[0],xmin = 0, xmax = len(accs), linestyles= 'dashed', label = 'initial accuracy')
+        plt.scatter(range(1,len(accs[1:])+1) , accs[1:])
+        plt.xlabel('Randomly ablated neurons')
+        plt.ylabel('Accuracy drop')
+        
+#    plt.savefig('saved/ablation.png')
     plt.show()
+
+def ablation_test(config, resume, selected_neurons, accumulate=False):
+    '''
+    ablate neurons and visualize
+    if accumulate the ablation, then the model will be ablated with all the neurons in the neuron_seq
+    if not accumulate, then only one neuron in the neuron_seq will be ablated each trial
+    ''' 
+    abl_logs = []
+    tmp = Ablation(config, selected_neurons, resume)
+    selected_neurons = random_ablation(tmp.get_neuron_nb()) # tmp, generate a list of random neurons
+    abl_logs.append(((None, None), tmp.get_original_metric())) # get the intial model performance as baseline
+    if accumulate: # ablate muliple neurons and accumulate the accuracy drop effect
+        trials = 5
+        for i in range(trials):
+            abl = Ablation(config, selected_neurons, resume)
+            log = abl.ablation()
+            abl_logs += log
+            print('ablating the {i}th trial'.format(i=i))
+    else:  # ablate only one neuron for each trial
+        for neuron in selected_neurons:
+            abl = Ablation(config, [neuron], resume)
+            log = abl.ablation()
+            abl_logs += log
+    visualize(abl_logs, accumulate)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
@@ -190,16 +228,7 @@ if __name__ == '__main__':
         config = torch.load(args.resume)['config']
     if args.device:
         os.environ["CUDA_VISIBLE_DEVICES"]=args.device
-    
-    # ablate neurons and visualize
+
     selected_neurons = None
-    abl_logs = []
-    for i in range(20):
-        abl = Ablation(config, selected_neurons, args.resume)
-        log = abl.ablation()
-        abl_logs.append(log)
-        print('ablating the {i}th trial'.format(i=i))
-    visualize(abl_logs)
-
-
-
+    accumlate = True#False
+    ablation_test(config, args.resume, selected_neurons, accumlate)    

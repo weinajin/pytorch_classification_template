@@ -19,5 +19,5 @@ def topk_acc(output, target, k=3):
     return correct / len(target)
 
 
-def class_acc(output, target):
-    return
+#def class_acc(output, target):
+#    return
