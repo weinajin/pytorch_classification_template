@@ -23,24 +23,27 @@ def topk_acc(output, target, k=3):
 
 # not tested yet
 def class_acc(output, target):
+    '''output is a 2d array of shape (batch_size, # of classes)
+    '''
+
     output_np = output.data.cpu().numpy()
-    target_np = target.data.cpu().numpy()
+    target_np = target.cpu().numpy()
     class_accuracy = []
     for i in range(len(target_names)):
-        output = np.max(output[:,i], dim = 1)
-        class_accuracy.append(metrics.accuracy(target_np[:,i], output)
+        output = np.max(output[:,i])
+        class_accuracy.append(metrics.accuracy(target_np[:,i], output))
     return class_accuracy
 
 def class_auc(output, target):
     output_np = output.data.cpu().numpy()
-    target_np = target.data.cpu().numpy()
+    target_np = target.cpu().numpy()
     class_auc = []
     for i in range(len(target_names)):
-        class_auc.append(metrics.roc_auc_score(target_np[:,i],output_np[:,i] )
+        class_auc.append(metrics.roc_auc_score(target_np[:,i],output_np[:,i]) )
     return class_auc
 
 def confusion_matrix(output, target):
+    target_np = target.cpu().numpy()
     output_np = output.data.cpu().numpy()
-    target_np = target.data.cpu().numpy()
-    target_np = np.argmax(target_np, dim = 1)
+    output_np = np.argmax(output_np, axis = 1)
     return metrics.confusion_matrix(target_np, output_np)
