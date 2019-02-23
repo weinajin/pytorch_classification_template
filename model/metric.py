@@ -31,7 +31,7 @@ def class_acc(output, target):
         class_accuracy.append(metrics.accuracy(target_np[:,i], output)
     return class_accuracy
 
-def class_roc(output, target):
+def class_auc(output, target):
     output_np = output.data.cpu().numpy()
     target_np = target.data.cpu().numpy()
     class_auc = []
