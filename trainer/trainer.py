@@ -22,10 +22,13 @@ class Trainer(BaseTrainer):
         self.log_step = int(np.sqrt(data_loader.batch_size))
 
     def _eval_metrics(self, output, target):
-        acc_metrics = np.zeros(len(self.metrics))
+        acc_metrics = {met.__name__: [] for met in self.metrics} #np.zeros(len(self.metrics))
         for i, metric in enumerate(self.metrics):
-            acc_metrics[i] += metric(output, target)
-            self.writer.add_scalar(f'{metric.__name__}', acc_metrics[i])
+            acc_metrics[metric.__name__].append(metric(output, target))
+            try:
+                self.writer.add_scalar(f'{metric.__name__}', acc_metrics[metric.__name__])
+            except:
+                pass
         return acc_metrics
 
     def _train_epoch(self, epoch):

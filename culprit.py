@@ -66,42 +66,50 @@ class CulpritNeuronScore()
         
         # record activation map for neurons in each layer
         self.activation_map = {}
-        def record_activation_map(module, ipt, opt):
-            self.activation_map[module] = opt[0]
         for m in self.model.children():
             m.register_forward_hook(record_activation_map)
+        # initialize the global variabel to record prediction and gt, clear the record for class initilization 
+        self.pred = None
+        self.gt = None
+        self.total_metrics = None
 
+    def record_activation_map(self, module, ipt, opt):
+        self.activation_map[module] = opt[0]
+        print(opt[0].shape)
 
     def evaluate(self):
         total_loss = 0.0
-        total_metrics = torch.zeros(len(self.metric_fns))
+        total_metrics = {met.__name__: [] for met in self.metric_fns} #torch.zeros(len(self.metric_fns))
         # record the original output with gt
-        target = torch.
-        output = torch.
+        self.gt = torch.LongTensor().to(self.device)
+        self.pred = torch.FloatTensor().to(self.device)
         with torch.no_grad():
             for i, (data, target) in enumerate(tqdm(self.data_loader)):
                 data, target = data.to(self.device), target.to(self.device)
                 output = self.model(data)
-                #
-                # save sample images, or do something with output here
-                #
-                
+                # concatenate the gt and output
+                gt = torch.cat((gt, target), dim =0)
+                pred = torch.cat(pred, output.data), dim = 0)
                 # computing loss, metrics on test set
                 loss = self.loss_fn(output, target)
                 batch_size = data.shape[0]
                 total_loss += loss.item() * batch_size
-                for i, metric in enumerate(self.metric_fns):
-                    total_metrics[i] += metric(output, target) * batch_size
-
+            # given the gt and output, calculate the eval metrics for the whole val set
+            for i, metric in enumerate(self.metric_fns):
+                total_metrics[metric.__name__].append(metric(pred, gt)) 
         n_samples = len(self.data_loader.sampler)
-        log = {'loss': total_loss / n_samples}
-        log.update({met.__name__ : total_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
-        print(log)
-        return log
+        loss = {'loss': total_loss / n_samples}
+        self.total_metrics.update(loss)
+        print(self.total_metrics)
+        return self.total_metrics
 
     def get_neuron_nb(self):
         return self.neuron_nb
-
+    
+    def get_gt(self):
+        return self.gt
+    def get_predict(self):
+        return self.predict
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
@@ -119,3 +127,4 @@ if __name__ == '__main__':
         os.environ["CUDA_VISIBLE_DEVICES"]=args.device
 
     cul = CulpritNeuronScore(config, args.resume) 
+    cul.evaluate()
