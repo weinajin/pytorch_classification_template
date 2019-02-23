@@ -161,32 +161,41 @@ def random_ablation(neuron_nb):
     for i, (l_name, n_nb) in enumerate(list(neuron_nb.items())[:-1]):
         layer_seq = [(i, n) for n in range(n_nb)]
         abl_seq += layer_seq
+        print('abl_seq length {}'.format(len(abl_seq)))
 #        if len(abl_seq) >= 5:
 #            break
     shuffle(abl_seq)
     return abl_seq
 
 
-def visualize(abl_logs, accumulate, class_specific = False):
+def visualize_accumulate(abl_logs, class_specific = False):
     '''
     visualize the neuron ablation w.r.t the evaluating metrics.
-    the abl_log is a list of neurons ablated sequencially, (neuron, abl_log)'''
+    the abl_log is a list of neurons ablated sequencially, (neuron, abl_log)
+    '''
+    accs = []
+    for log in abl_logs:
+        acc = [list(i[1].items())[1][1] for i in log]
+        accs.append(acc)
+    for acc in accs:
+        plt.plot(acc)
+    plt.xlabel('Number of randomly ablated neurons')
+    plt.ylabel('Accuracy')
+    plt.show()
+
+def visualize_neuron_ablation(abl_logs):
+    '''
+    visualize the neuron ablation w.r.t the evaluating metrics.
+    the abl_log is a list of neurons ablated sequencially, [acc] 
+    '''
     accs = [log[1]['overal_acc'] for log in abl_logs]
-    if accumulate:
-        colormap = plt.cm.gist_ncar
-        plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(accs))])
-        for acc in accs:
-            plt.plot(acc)
-        plt.xlabel('Number of randomly ablated neurons')
-        plt.ylabel('Accuracy')
-    else:
-        acc_drop = accs[0] - np.array(accs[1:])
-        plt.hlines(accs[0],xmin = 0, xmax = len(accs), linestyles= 'dashed', label = 'initial accuracy')
-        plt.scatter(range(1,len(accs[1:])+1) , accs[1:])
-        plt.xlabel('Randomly ablated neurons')
-        plt.ylabel('Accuracy drop')
+    print('acc is {}'.format(accs))
+    acc_drop = accs[0] - np.array(accs[1:])
+    plt.hlines(accs[0],xmin = 0, xmax = len(accs), linestyles= 'dashed', label = 'initial accuracy')
+    plt.scatter(range(1,len(accs[1:])+1) , accs[1:])
+    plt.xlabel('Randomly ablated neurons')
+    plt.ylabel('Accuracy after ablate one neuron, compared with baseline')
         
-#    plt.savefig('saved/ablation.png')
     plt.show()
 
 def ablation_test(config, resume, selected_neurons, accumulate=False):
@@ -198,20 +207,26 @@ def ablation_test(config, resume, selected_neurons, accumulate=False):
     abl_logs = []
     tmp = Ablation(config, selected_neurons, resume)
     selected_neurons = random_ablation(tmp.get_neuron_nb()) # tmp, generate a list of random neurons
-    abl_logs.append(((None, None), tmp.get_original_metric())) # get the intial model performance as baseline
     if accumulate: # ablate muliple neurons and accumulate the accuracy drop effect
-        trials = 5
+        trials = 2
+        trial_logs = []
         for i in range(trials):
+            trial_log = []
+            selected_neurons = random_ablation(tmp.get_neuron_nb()) # tmp, generate a list of random neurons
+            trial_log.append(((None, None), tmp.get_original_metric())) # get the intial model performance as baseline
             abl = Ablation(config, selected_neurons, resume)
             log = abl.ablation()
-            abl_logs += log
-            print('ablating the {i}th trial'.format(i=i))
+            trial_log += log
+            trial_logs.append(trial_log)
+            print('ablating the {i}th trial'.format(i=i+1))
+        visualize_accumulate(trial_logs)
     else:  # ablate only one neuron for each trial
+        abl_logs.append(((None, None), tmp.get_original_metric())) # get the intial model performance as baseline
         for neuron in selected_neurons:
             abl = Ablation(config, [neuron], resume)
             log = abl.ablation()
             abl_logs += log
-    visualize(abl_logs, accumulate)
+        visualize_neuron_ablation(abl_logs)
 
 
 if __name__ == '__main__':
@@ -230,5 +245,5 @@ if __name__ == '__main__':
         os.environ["CUDA_VISIBLE_DEVICES"]=args.device
 
     selected_neurons = None
-    accumlate = True#False
+    accumlate = False
     ablation_test(config, args.resume, selected_neurons, accumlate)    
