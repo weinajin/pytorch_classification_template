@@ -29,7 +29,7 @@ class CulpritNeuronScore():
         # setup data_loader instances
         self.data_loader = getattr(module_data, config['data_loader']['type'])(
             config['data_loader']['args']['data_dir'],
-            batch_size=1000,  # pass one data at a time, slow, but hook can only output one data at a time
+            batch_size= 1 ,  # pass one data at a time, slow, but hook can only output one data at a time
             shuffle=False,
             validation_split=0.0,
             training=False,
@@ -92,7 +92,6 @@ class CulpritNeuronScore():
             self.activation_map[self.module_seq[module]] = torch.Tensor()
             self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt[0].cpu()))
         print('recorded activation map shape:', self.activation_map[self.module_seq[module]].shape, opt[0].shape)
-        print(module.__class__.__name__)
 
     def evaluate(self):
         total_loss = 0.0
@@ -108,7 +107,6 @@ class CulpritNeuronScore():
                 # concatenate the gt and output
                 self.gt = torch.cat((self.gt, target), dim =0)
                 self.pred = torch.cat((self.pred, output.data))
-                print('shape: gt, pred, output.data',self.gt.shape, self.pred.shape, output.data.shape)
 
                 # computing loss, metrics on test set
                 loss = self.loss_fn(output, target)
@@ -116,7 +114,6 @@ class CulpritNeuronScore():
                 total_loss += loss.item() * batch_size
 
             # given the gt and output, calculate the eval metrics for the whole val set
-            print('====i===:', i)
             for i, metric in enumerate(self.class_metric_fns):
                 class_metrics[metric.__name__].append(metric(self.pred, self.gt))
             for i, metric in enumerate(self.metric_fns):
@@ -127,8 +124,6 @@ class CulpritNeuronScore():
         self.total_metrics.update(loss)
         self.total_metrics.update({met.__name__ : scalar_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
         self.total_metrics.update(class_metrics)
-        print(self.total_metrics)
-        print(self.i, self.module_seq)
         return self.total_metrics
 
     def get_neuron_nb(self):
