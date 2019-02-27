@@ -12,7 +12,7 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, loss, metrics, optimizer, resume, config, train_logger=None):
+    def __init__(self, model, loss, metrics, val_metrics, optimizer, resume, config, train_logger=None):
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -24,6 +24,7 @@ class BaseTrainer:
 
         self.loss = loss
         self.metrics = metrics
+        self.val_metrics = val_metrics
         self.optimizer = optimizer
         self.train_logger = train_logger
 
@@ -90,7 +91,7 @@ class BaseTrainer:
                 if key == 'metrics':
                     log.update({mtr.__name__ : value[i] for i, mtr in enumerate(self.metrics)})
                 elif key == 'val_metrics':
-                    log.update({'val_' + mtr.__name__ : value[i] for i, mtr in enumerate(self.metrics)})
+                    log.update({'val_' + mtr.__name__ : value[i] for i, mtr in enumerate(self.val_metrics)})
                 else:
                     log[key] = value
 

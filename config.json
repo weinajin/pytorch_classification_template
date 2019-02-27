@@ -26,7 +26,10 @@
     },
     "loss": "nll_loss",
     "metrics": [
-        "overal_acc", "topk_acc", "class_acc", 
+        "overal_acc", "topk_acc"
+    ],
+    "val_metrics": [
+        "class_acc", 
 		"class_auc", "confusion_matrix" 
     ],
     "lr_scheduler": {
