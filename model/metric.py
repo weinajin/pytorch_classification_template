@@ -23,27 +23,42 @@ def topk_acc(output, target, k=3):
 
 # not tested yet
 def class_acc(output, target):
-    '''output is a 2d array of shape (batch_size, # of classes)
     '''
-
+    output is a 2d array of shape (batch_size, # of classes)
+    target shape: 1d array [batch_size]
+    '''
     output_np = output.data.cpu().numpy()
+    pred = np.argmax(output_np, axis = 1) # 1d vector
     target_np = target.cpu().numpy()
     class_accuracy = []
-    for i in range(len(target_names)):
-        output = np.max(output[:,i])
-        class_accuracy.append(metrics.accuracy(target_np[:,i], output))
+    cm = metrics.confusion_matrix(target_np, pred)
+    # normalize the diagonal entries
+    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    #The diagonal entries are the accuracies of each class
+    class_accuracy = cm.diagonal()
+#    for i in range(len(target_names)):
+#        class_output = np.amax(output[:,i], axis = 1)
+#        class_accuracy.append(metrics.accuracy_score(target_np[:,i],class_output))
     return class_accuracy
 
 def class_auc(output, target):
+    '''
+    average = None, return each class auc
+    '''
     output_np = output.data.cpu().numpy()
     target_np = target.cpu().numpy()
-    class_auc = []
-    for i in range(len(target_names)):
-        class_auc.append(metrics.roc_auc_score(target_np[:,i],output_np[:,i]) )
-    return class_auc
+#    class_auc = []
+#    for i in range(len(target_names)):
+#        class_auc.append(metrics.roc_auc_score(target_np[:,i],output_np[:,i]) )
+    target_onehot = one_hot(target, len(target_names))
+    print(target_onehot.shape, output_np.shape, 'shape')
+    return metrics.roc_auc_score(target_onehot, output_np, average = None)
 
 def confusion_matrix(output, target):
     target_np = target.cpu().numpy()
     output_np = output.data.cpu().numpy()
     output_np = np.argmax(output_np, axis = 1)
     return metrics.confusion_matrix(target_np, output_np)
+
+def one_hot(a, num_classes):
+    return np.squeeze(np.eye(num_classes)[a.reshape(-1)])
