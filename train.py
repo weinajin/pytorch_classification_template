@@ -27,15 +27,15 @@ def main(config, resume):
     # get function handles of loss and metrics
     loss = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
-    # seperate class metrics, do not need to be evaluated during training, only for evaluation
-    val_metrics = [getattr(module_metric, met) for met in config['val_metrics']]
+#    # seperate class metrics, do not need to be evaluated during training, only for evaluation
+#    val_metrics = [getattr(module_metric, met) for met in config['val_metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = get_instance(torch.optim, 'optimizer', config, trainable_params)
     lr_scheduler = get_instance(torch.optim.lr_scheduler, 'lr_scheduler', config, optimizer)
 
-    trainer = Trainer(model, loss, metrics, val_metrics, optimizer, 
+    trainer = Trainer(model, loss, metrics, optimizer, 
                       resume=resume,
                       config=config,
                       data_loader=data_loader,

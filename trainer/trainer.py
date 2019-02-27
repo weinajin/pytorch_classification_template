@@ -11,9 +11,9 @@ class Trainer(BaseTrainer):
     Note:
         Inherited from BaseTrainer.
     """
-    def __init__(self, model, loss, metrics, class_metrics, optimizer, resume, config,
+    def __init__(self, model, loss, metrics, optimizer, resume, config,
                  data_loader, valid_data_loader=None, lr_scheduler=None, train_logger=None):
-        super(Trainer, self).__init__(model, loss, metrics, class_metrics, optimizer, resume, config, train_logger)
+        super(Trainer, self).__init__(model, loss, metrics, optimizer, resume, config, train_logger)
         self.config = config
         self.data_loader = data_loader
         self.valid_data_loader = valid_data_loader
@@ -22,14 +22,21 @@ class Trainer(BaseTrainer):
         self.log_step = int(np.sqrt(data_loader.batch_size))
 
     def _eval_metrics(self, output, target):
-        acc_metrics = {met.__name__: [] for met in self.metrics} #np.zeros(len(self.metrics))
+        '''
+        only add scalar metric to TensorboardX
+        '''
+        acc_metrics = np.zeros(len(self.metrics)) #{met.__name__: [] for met in self.metrics}
         for i, metric in enumerate(self.metrics):
-            acc_metrics[metric.__name__].append(metric(output, target))
-            try:
-                self.writer.add_scalar(f'{metric.__name__}', acc_metrics[metric.__name__])
-            except:
-                pass
+            acc_metrics[i] += metric(output, target)
+            self.writer.add_scalar(f'{metric.__name__}', acc_metrics[i])
+#            print(metric.__name__)
+#            acc_metrics[metric.__name__].append(metric(output, target))
+#            try:
+#                self.writer.add_scalar(f'{metric.__name__}', acc_metrics[metric.__name__])
+#            except:
+#                pass
         return acc_metrics
+
 
     def _train_epoch(self, epoch):
         """

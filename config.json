@@ -28,7 +28,7 @@
     "metrics": [
         "overal_acc", "topk_acc"
     ],
-    "val_metrics": [
+    "class_metrics": [
         "class_acc", 
 		"class_auc", "confusion_matrix" 
     ],

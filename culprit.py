@@ -13,7 +13,9 @@ from random import shuffle
 import matplotlib.pyplot as plt
 import copy
 
-class CulpritNeuronScore()
+import pickle
+
+class CulpritNeuronScore():
     '''
     Get culprit score by passing validation set, record activation map for each neuron, and the prediction results (right/wrong)
     Generate the culprit score for each neuron, approaches:
@@ -27,7 +29,7 @@ class CulpritNeuronScore()
         # setup data_loader instances
         self.data_loader = getattr(module_data, config['data_loader']['type'])(
             config['data_loader']['args']['data_dir'],
-            batch_size=512,
+            batch_size=1000,  # pass one data at a time, slow, but hook can only output one data at a time
             shuffle=False,
             validation_split=0.0,
             training=False,
@@ -36,11 +38,12 @@ class CulpritNeuronScore()
 
         # build model architecture
         self.model = get_instance(module_arch, 'arch', config)
-#        self.model.summary()
+        self.model.summary()
 
         # get function handles of loss and metrics
         self.loss_fn = getattr(module_loss, config['loss'])
         self.metric_fns = [getattr(module_metric, met) for met in config['metrics']]
+        self.class_metric_fns = [getattr(module_metric, met) for met in config['class_metrics']]
 
         # load state dict
         checkpoint = torch.load(resume)
@@ -62,24 +65,39 @@ class CulpritNeuronScore()
                 self.neuron_nb[a] = m.out_channels # conv layers
             except:
                 self.neuron_nb[a] = m.out_features # linear layers
-#        print(self.neuron_nb)
         
         # record activation map for neurons in each layer
-        self.activation_map = {}
+        self.activation_map = dict()
         for m in self.model.children():
-            m.register_forward_hook(record_activation_map)
+            m.register_forward_hook(self.record_activation_map)
         # initialize the global variabel to record prediction and gt, clear the record for class initilization 
         self.pred = None
         self.gt = None
-        self.total_metrics = None
+        self.total_metrics = dict()
+        # record the layer seq {module: i}
+        self.module_seq = dict()
+        self.i = 0
 
     def record_activation_map(self, module, ipt, opt):
-        self.activation_map[module] = opt[0]
-        print(opt[0].shape)
+        '''
+        record activation map for each layer (module)
+        each element in the module list is the pass of a data, not batch?
+        '''
+        if module in self.module_seq:
+#            self.activation_map[module].append(opt[0])
+            self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt[0].cpu()))
+        else:
+            self.module_seq[module] = self.i
+            self.i += 1
+            self.activation_map[self.module_seq[module]] = torch.Tensor()
+            self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt[0].cpu()))
+        print('recorded activation map shape:', self.activation_map[self.module_seq[module]].shape, opt[0].shape)
+        print(module.__class__.__name__)
 
     def evaluate(self):
         total_loss = 0.0
-        total_metrics = {met.__name__: [] for met in self.metric_fns} #torch.zeros(len(self.metric_fns))
+        scalar_metrics = torch.zeros(len(self.metric_fns))
+        class_metrics = {met.__name__: [] for met in self.class_metric_fns} #torch.zeros(len(self.metric_fns))
         # record the original output with gt
         self.gt = torch.LongTensor().to(self.device)
         self.pred = torch.FloatTensor().to(self.device)
@@ -88,19 +106,29 @@ class CulpritNeuronScore()
                 data, target = data.to(self.device), target.to(self.device)
                 output = self.model(data)
                 # concatenate the gt and output
-                gt = torch.cat((gt, target), dim =0)
-                pred = torch.cat(pred, output.data), dim = 0)
+                self.gt = torch.cat((self.gt, target), dim =0)
+                self.pred = torch.cat((self.pred, output.data))
+                print('shape: gt, pred, output.data',self.gt.shape, self.pred.shape, output.data.shape)
+
                 # computing loss, metrics on test set
                 loss = self.loss_fn(output, target)
                 batch_size = data.shape[0]
                 total_loss += loss.item() * batch_size
+
             # given the gt and output, calculate the eval metrics for the whole val set
+            print('====i===:', i)
+            for i, metric in enumerate(self.class_metric_fns):
+                class_metrics[metric.__name__].append(metric(self.pred, self.gt))
             for i, metric in enumerate(self.metric_fns):
-                total_metrics[metric.__name__].append(metric(pred, gt)) 
+                scalar_metrics[i] += metric(output, target) * batch_size
+
         n_samples = len(self.data_loader.sampler)
         loss = {'loss': total_loss / n_samples}
         self.total_metrics.update(loss)
+        self.total_metrics.update({met.__name__ : scalar_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
+        self.total_metrics.update(class_metrics)
         print(self.total_metrics)
+        print(self.i, self.module_seq)
         return self.total_metrics
 
     def get_neuron_nb(self):
@@ -109,7 +137,19 @@ class CulpritNeuronScore()
     def get_gt(self):
         return self.gt
     def get_predict(self):
-        return self.predict
+        return self.pred
+
+    def get_activation(self):
+        return self.activation_map
+
+    def save_data(self, path):
+        with open(path + 'activationMap.pkl', 'wb') as output:
+            pickle.dump(self.activation_map, output)
+        with open(path + 'gt.pkl', 'wb') as output:
+            pickle.dump(self.gt.cpu(), output)
+        with open(path + 'pred.pkl', 'wb') as output:
+            pickle.dump(self.pred.cpu(), output)
+        print('data saved')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
@@ -128,3 +168,4 @@ if __name__ == '__main__':
 
     cul = CulpritNeuronScore(config, args.resume) 
     cul.evaluate()
+    cul.save_data('./saved/')
