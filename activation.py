@@ -17,12 +17,7 @@ import pickle
 
 class ExtractActivation():
     '''
-    Get culprit score by passing validation set, record activation map for each neuron, and the prediction results (right/wrong)
-    Generate the culprit score for each neuron, approaches:
-    1. calculate the statistics when output the wrong prediction
-    args:
-        selected_neurons: a csv file contains list of neurons to be ablated
-    
+    extract activation map, and the output and gt.  
     '''
     
     def __init__(self, config, resume):
@@ -35,7 +30,7 @@ class ExtractActivation():
             training=False,
             num_workers=2
         )
-
+#        print(next(iter(self.data_loader)).shape)
         # build model architecture
         self.model = get_instance(module_arch, 'arch', config)
         self.model.summary()
@@ -84,15 +79,14 @@ class ExtractActivation():
         each element in the module list is the pass of a data, not batch?
         '''
         if module in self.module_seq:
-#            self.activation_map[module].append(opt[0])
-            self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt[0].cpu()))
+            self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt.cpu()))
         else:
             self.module_seq[module] = self.i
             self.i += 1
-            self.map_shape.append(opt[0].shape)
+            self.map_shape.append(opt.shape)
             self.activation_map[self.module_seq[module]] = torch.Tensor()
-            self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt[0].cpu()))
-        print('recorded activation map shape:', self.activation_map[self.module_seq[module]].shape, opt[0].shape)
+            self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt.cpu()))
+        print('recorded activation map shape:', self.activation_map[self.module_seq[module]].shape, opt.shape)
 
     def evaluate(self):
         total_loss = 0.0
@@ -105,6 +99,7 @@ class ExtractActivation():
             for i, (data, target) in enumerate(tqdm(self.data_loader)):
                 data, target = data.to(self.device), target.to(self.device)
                 output = self.model(data)
+                print(data.shape, 'datashape')
                 # concatenate the gt and output
                 self.gt = torch.cat((self.gt, target), dim =0)
                 self.pred = torch.cat((self.pred, output.data))
