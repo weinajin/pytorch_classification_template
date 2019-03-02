@@ -50,7 +50,7 @@ def class_auc(output, target):
 #    class_auc = []
 #    for i in range(len(target_names)):
 #        class_auc.append(metrics.roc_auc_score(target_np[:,i],output_np[:,i]) )
-    target_onehot = one_hot(target, len(target_names))
+    target_onehot = one_hot(target_np, len(target_names))
     return metrics.roc_auc_score(target_onehot, output_np, average = None)
 
 def confusion_matrix(output, target):

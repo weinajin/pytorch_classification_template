@@ -24,7 +24,7 @@ class ExtractActivation():
         # setup data_loader instances
         self.data_loader = getattr(module_data, config['data_loader']['type'])(
             config['data_loader']['args']['data_dir'],
-            batch_size= 1 ,  # pass one data at a time, slow, but hook can only output one data at a time
+            batch_size= 512 , 
             shuffle=False,
             validation_split=0.0,
             training=False,
@@ -99,8 +99,7 @@ class ExtractActivation():
             for i, (data, target) in enumerate(tqdm(self.data_loader)):
                 data, target = data.to(self.device), target.to(self.device)
                 output = self.model(data)
-                print(data.shape, 'datashape')
-                # concatenate the gt and output
+                # record by concatenate the gt and output
                 self.gt = torch.cat((self.gt, target), dim =0)
                 self.pred = torch.cat((self.pred, output.data))
 
@@ -120,6 +119,7 @@ class ExtractActivation():
         self.total_metrics.update(loss)
         self.total_metrics.update({met.__name__ : scalar_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
         self.total_metrics.update(class_metrics)
+        print("evaluation metrics", self.total_metrics)
         return self.total_metrics
 
     def get_neuron_nb(self):
@@ -142,7 +142,6 @@ class ExtractActivation():
             pickle.dump(self.pred.cpu(), output)
         with open(path + 'map_shape.pkl', 'wb') as output:
             pickle.dump(self.map_shape, output)
-        print(self.map_shape)
         print('data saved')
 
 if __name__ == '__main__':
