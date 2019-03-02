@@ -112,12 +112,11 @@ class ExtractActivation():
             for i, metric in enumerate(self.class_metric_fns):
                 class_metrics[metric.__name__].append(metric(self.pred, self.gt))
             for i, metric in enumerate(self.metric_fns):
-                scalar_metrics[i] += metric(output, target) * batch_size
-
+                scalar_metrics[i] = metric(self.pred, self.gt)
         n_samples = len(self.data_loader.sampler)
         loss = {'loss': total_loss / n_samples}
         self.total_metrics.update(loss)
-        self.total_metrics.update({met.__name__ : scalar_metrics[i].item() / n_samples for i, met in enumerate(self.metric_fns)})
+        self.total_metrics.update({met.__name__ : scalar_metrics[i].item()  for i, met in enumerate(self.metric_fns)})
         self.total_metrics.update(class_metrics)
         print("evaluation metrics", self.total_metrics)
         return self.total_metrics
