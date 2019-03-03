@@ -39,8 +39,7 @@ class CulpritNeuronScore():
         # compute the label and activation vector
         self.pred_class = None # convert the one-hot prob of pred_prob to a class prediction
         self.label = None # label whether this datapoint is classified as correct - 1 / incorrect - 0
-        self.flattened_actv = None # shape (# of data, # of channels/neurons). for conv, 2d activation (dim 3,4) is flattened as a scalar
-        self.features = None
+        self.feature = [] # shape (# of data, # of channels/neurons). for conv, 2d activation (dim 3,4) is flattened as a scalar
         self.get_label()
         self.get_feature()
 
@@ -71,7 +70,7 @@ class CulpritNeuronScore():
 
         self.pred_class = torch.argmax(self.pred_prob, dim = 1)
         self.label = self.pred_class == self.gt
-        print(self.label.size(), torch.sum(self.label))
+        print('label size is {}, positive label ratio is {}.'.format(self.label.size(), torch.sum(self.label)))
 
     def get_feature(self, mode = 'mean'):
         '''
@@ -81,10 +80,18 @@ class CulpritNeuronScore():
         '''
         # flatten activation map
         mode_dict = {'mean': torch.mean, 'max': torch.max, 'median':torch.median}
+        activation = []
         for i in range(len(self.actv_map)):
             print(len(self.actv_map[i].size()))
             if len(self.actv_map[i].size()) > 2:
-                self.feature = globals()[mode_dict[mode]](self.actv_map[i], dim = 3 
+                actv_map_flattened =  self.actv_map[i].reshape(self.actv_map[i].shape[0], self.actv_map[i].shape[1], -1)
+                convert_map_to_scalar = mode_dict[mode](actv_map_flattened, dim = 2)
+                activation.append(convert_map_to_scalar)
+            else:
+                activation.append(self.actv_map[i])
+#            print('len(act), act[i] shape', len(activation), activation[i].shape)
+        self.feature = torch.cat(activation, dim=1)
+        print('feature shape is {}.'.format(self.feature.shape))
 
     def statistics(self):
         '''
