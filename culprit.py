@@ -25,38 +25,78 @@ class CulpritNeuronScore():
     
     '''
     
-    def __init__(self, folder):
+    def __init__(self, path):
         '''
         read pkl file: pred, gt, activation map, and its shape'
         '''
+        # read original data from file
         self.gt = None
-        self.pred = None
+        self.pred_prob = None
         self.actv_map = None
         self.map_shape = None
+        self.load_pkl(path)
+        
+        # compute the label and activation vector
+        self.pred_class = None # convert the one-hot prob of pred_prob to a class prediction
+        self.label = None # label whether this datapoint is classified as correct - 1 / incorrect - 0
+        self.flattened_actv = None # shape (# of data, # of channels/neurons). for conv, 2d activation (dim 3,4) is flattened as a scalar
+        self.features = None
+        self.get_label()
+        self.get_feature()
 
-        self.load_pkl(folder)
-        assert self.gt.shape == self.pred.shape, 'pred and gt are not in the same shape'
-        assert len(self.actv_map) == self.map_shape(), 'activation map and map shape are not at the same length'
-
-    def load_pkl(folder):
+    def load_pkl(self, path):
         '''
         load pkl files in the folder with the filename: gt, pred, activationMap, map_shape
         '''
-        self.gt = 
-        self.pred = 
-        self.actv_map = 
-        self.map_shape = 
+        with open(path + 'activationMap.pkl', 'rb') as f:
+            self.actv_map = pickle.load(f)
+        with open(path + 'gt.pkl', 'rb') as f:
+            self.gt = pickle.load(f)
+        with open(path + 'pred.pkl', 'rb') as f:
+            self.pred_prob = pickle.load(f)
+        with open(path + 'map_shape.pkl', 'rb') as f:
+            self.map_shape = pickle.load(f)
 
-    def get_label():
+        # sanity check for data shape
+        assert self.gt.shape[0] == self.pred_prob.shape[0], 'pred and gt do not have the same datapoints, pred {}, gt {}'.format(self.pred_prob.shape, self.gt.shape)
+        for i in range(len(self.map_shape)):
+            assert self.actv_map[i].size()[1:] == self.map_shape[i][1:], 'activation map {} and map shape are not at the same length, activateion map {}, map_shape {}.'.format(i, self.actv_map[i].size(), self.map_shape[i])
 
-        self.gt == self.pred
+        print('data loaded')
 
+    def get_label(self):
+        '''
+        self.pred_correct is the label, predict correct - 1, incorrect - 0.
+        '''
+
+        self.pred_class = torch.argmax(self.pred_prob, dim = 1)
+        self.label = self.pred_class == self.gt
+        print(self.label.size(), torch.sum(self.label))
+
+    def get_feature(self, mode = 'mean'):
+        '''
+        1. flatten the activation map of one channel to be a scalar, so the shape of flattened 
+        mode: average, max, median
+        2. aggregate the neurons/channels at each layer as a activation vector
+        '''
+        # flatten activation map
+        mode_dict = {'mean': torch.mean, 'max': torch.max, 'median':torch.median}
+        for i in range(len(self.actv_map)):
+            print(len(self.actv_map[i].size()))
+            if len(self.actv_map[i].size()) > 2:
+                self.feature = globals()[mode_dict[mode]](self.actv_map[i], dim = 3 
 
     def statistics(self):
         '''
         calculate the culprit accoding to the statistics of activation map w.r.t. right/wrong pred
         '''
+
         return
+
+
+
+
+
 #        # setup data_loader instances
 #        self.data_loader = getattr(module_data, config['data_loader']['type'])(
 #            config['data_loader']['args']['data_dir'],
@@ -191,4 +231,4 @@ if __name__ == '__main__':
 #        config = torch.load(args.resume)['config']
 #    if args.device:
 #        os.environ["CUDA_VISIBLE_DEVICES"]=args.device
-    pass
+   clpt = CulpritNeuronScore('./saved/') 
