@@ -93,11 +93,16 @@ class CulpritNeuronScore():
         self.feature = torch.cat(activation, dim=1)
         print('feature shape is {}.'.format(self.feature.shape))
 
-    def statistics(self):
+    def cluprit_statistics(self):
         '''
-        calculate the culprit accoding to the statistics of activation map w.r.t. right/wrong pred
+        calculate the culprit according to the statistics of activation map w.r.t. right/wrong pred
+        for each neuron, calculate its mean ratio for R/W activation group. 
         '''
-
+        threshold = None
+        right_actv_group = self.feature[self.label, :]
+        wrong_actv = None
+        print(right_actv_group.shape)
+        
         return
 
 
@@ -239,3 +244,4 @@ if __name__ == '__main__':
 #    if args.device:
 #        os.environ["CUDA_VISIBLE_DEVICES"]=args.device
    clpt = CulpritNeuronScore('./saved/') 
+   clpt.cluprit_statistics()
