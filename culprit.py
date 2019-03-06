@@ -118,7 +118,6 @@ class CulpritNeuronScore():
         for each neuron, calculate its mean ratio for R/W activation group. 
         normalized = True, normalized each neuron's activation by dividing the activations across the dataset, before calculating the ratio
         '''
-        threshold = None
         # get ratio
         features = self.feature.clone()
         normalized = False
@@ -137,16 +136,35 @@ class CulpritNeuronScore():
         
         return ratio
 
-    def culprit_freq(self):
-        
-        return
+    def culprit_freq(self, normalized = True):
+        '''
+        count the time of neuron firing when prediction goes wrong. fire is when the activation above mean
+        '''
+        features = self.feature.clone()
+        if normalized:
+            features = self.normalize(features) 
+        mean = features.mean(dim = 0, keepdim = True)
+        fire = features > mean
+        right_fire = fire[self.label==1, :]
+        wrong_fire = fire[self.label==0, :]
+        # compute average wrong fire above right fire for each neuron
+        right_fire_mean = right_fire.sum(dim = 0).numpy() / float(right_fire.numpy().shape[0])
+        wrong_fire_mean = wrong_fire.sum(dim = 0).numpy() / float(wrong_fire.numpy().shape[0])
+        print(right_fire_mean)
+        print(wrong_fire_mean)
+        freq = wrong_fire_mean / right_fire_mean
+        print(freq)
+        return freq
 
     def get_rank(self, score):
         '''
         get neurons rankings according to the culpritness score
         '''
-        scr_sorted = score.sort(dim =0, descending = True)
-
+        sorted_idx = score.argsort(dim =0, descending = True)
+        # divide the idx according to layer and neuron
+        neuron_seq = None
+        return neuron_seq
 if __name__ == '__main__':
    clpt = CulpritNeuronScore('./saved/') 
-   clpt.culprit_ratio()
+   clpt = clpt.culprit_freq()
+#   clpt.culprit_ratio()
