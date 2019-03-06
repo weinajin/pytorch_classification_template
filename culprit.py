@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import copy
 
 import pickle
+import operator, functools
 
 class CulpritNeuronScore():
     '''
@@ -45,7 +46,7 @@ class CulpritNeuronScore():
         self.get_label()
         self.get_feature()
 
-
+#        self.culprit_score = None
 
     def load_pkl(self, path):
         '''
@@ -134,7 +135,7 @@ class CulpritNeuronScore():
         # get neurons rankings according to the ratio: 
 
         
-        return ratio
+        return ratio.numpy()
 
     def culprit_freq(self, normalized = True):
         '''
@@ -150,21 +151,38 @@ class CulpritNeuronScore():
         # compute average wrong fire above right fire for each neuron
         right_fire_mean = right_fire.sum(dim = 0).numpy() / float(right_fire.numpy().shape[0])
         wrong_fire_mean = wrong_fire.sum(dim = 0).numpy() / float(wrong_fire.numpy().shape[0])
-        print(right_fire_mean)
-        print(wrong_fire_mean)
+#        print(right_fire_mean)
+#        print(wrong_fire_mean)
         freq = wrong_fire_mean / right_fire_mean
-        print(freq)
+#        print(freq)
         return freq
 
     def get_rank(self, score):
         '''
         get neurons rankings according to the culpritness score
         '''
-        sorted_idx = score.argsort(dim =0, descending = True)
+        score = torch.Tensor(score)
+        sorted_idx = torch.argsort(score, descending = True)
         # divide the idx according to layer and neuron
-        neuron_seq = None
+        neuron_nb_layer = [i[1] for i in self.map_shape]
+        neuron_list = [[i for i in range(nb)] for (i,nb) in enumerate(neuron_nb_layer)]
+        neuron_list = functools.reduce(operator.add, neuron_list)
+        layer_list = [[i for j in range(nb)] for (i,nb) in enumerate(neuron_nb_layer)]
+        layer_list = functools.reduce(operator.add, layer_list)
+        neuron_seq = []
+        print(neuron_list)
+        print(layer_list)
+        assert len(layer_list) == len(neuron_list) == len(score) == len(sorted_idx), 'score list lengths are not equal!'
+        for i in sorted_idx:
+            layer_idx = layer_list[i]
+            neuron_idx = neuron_list[i]
+            print(layer_idx, neuron_idx)
+            neuron_seq.append((layer_idx, neuron_idx))
+#            print(score[sorted_idx[i]])
         return neuron_seq
 if __name__ == '__main__':
    clpt = CulpritNeuronScore('./saved/') 
-   clpt = clpt.culprit_freq()
+   score = clpt.culprit_freq()
+   clpt.get_rank(score)
 #   clpt.culprit_ratio()
+
