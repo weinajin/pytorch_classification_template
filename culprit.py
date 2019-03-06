@@ -153,6 +153,7 @@ class CulpritNeuronScore():
         wrong_fire_mean = wrong_fire.sum(dim = 0).numpy() / float(wrong_fire.numpy().shape[0])
 #        print(right_fire_mean)
 #        print(wrong_fire_mean)
+        # todo, bug in freq, all zeors
         freq = wrong_fire_mean / right_fire_mean
 #        print(freq)
         return freq
@@ -170,16 +171,14 @@ class CulpritNeuronScore():
         layer_list = [[i for j in range(nb)] for (i,nb) in enumerate(neuron_nb_layer)]
         layer_list = functools.reduce(operator.add, layer_list)
         neuron_seq = []
-        print(neuron_list)
-        print(layer_list)
         assert len(layer_list) == len(neuron_list) == len(score) == len(sorted_idx), 'score list lengths are not equal!'
         for i in sorted_idx:
             layer_idx = layer_list[i]
             neuron_idx = neuron_list[i]
-            print(layer_idx, neuron_idx)
             neuron_seq.append((layer_idx, neuron_idx))
-#            print(score[sorted_idx[i]])
-        return neuron_seq
+#        print(score)
+#        print(neuron_seq)
+        return neuron_seq, score.numpy()
 if __name__ == '__main__':
    clpt = CulpritNeuronScore('./saved/') 
    score = clpt.culprit_freq()
