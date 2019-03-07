@@ -113,28 +113,31 @@ class CulpritNeuronScore():
         print('*** x of shape {} is normalized column wise. Before normalize, sum of mean and std for each col are: {}, {}. After normalize: {}, {}.'.format(x.shape, x.mean(0).sum(), x.std(0).sum(), x_normed.mean(0).sum(), x_normed.std(0).sum()))
         return x_normed
 
-    def culprit_ratio(self, normalized = True):
+    def culprit_ratio(self, normalized = True, absolute = True):
         '''
-        calculate the culprit according to the statistics of activation map w.r.t. right/wrong pred
+        calculate the culprit according to the statistics of activation map w.r.t. right/wrong pred.
         for each neuron, calculate its mean ratio for R/W activation group. 
-        normalized = True, normalized each neuron's activation by dividing the activations across the dataset, before calculating the ratio
+        normalized = True, normalized each neuron's activation by dividing the activations across the dataset, before calculating the ratio.
         '''
-        # get ratio
+        # get normalized activations
         features = self.feature.clone()
         normalized = False
         if normalized:
             features = self.normalize(features)
+        # group activation according to the predict is right/wrong
         right_actv = features[self.label==1, :]
         wrong_actv = features[self.label==0, :]
+        # for each neuron, get the mean activation acrosse the full wrong/right datapoints 
         r_mean = right_actv.mean(0)
         w_mean = wrong_actv.mean(0)
-#        print(right_actv.std(0), wrong_actv.std(0), right_actv.shape, wrong_actv.shape)
+#         print('right mean: {}'.format(r_mean))
+#         print('wrong mean: {}'.format(w_mean))
+        # how active a neuron is in the wrong vs. right prediction is the culprit score
+        # todo: how to deal with negatives? for now use absolute values
         ratio = w_mean / r_mean 
-        print(ratio.shape, ratio)
-#        print(w_mean, r_mean)
-        # get neurons rankings according to the ratio: 
-
-        
+        if absolute:
+            ratio = ratio.abs()
+#         print(ratio.shape, ratio)
         return ratio.numpy()
 
     def culprit_freq(self, normalized = True):
@@ -162,8 +165,10 @@ class CulpritNeuronScore():
         '''
         get neurons rankings according to the culpritness score
         '''
-        score = torch.Tensor(score)
-        sorted_idx = torch.argsort(score, descending = True)
+        #score = torch.Tensor(score)
+        #sorted_idx = torch.argsort(score, descending = True)  # AttributeError: module 'torch' has no attribute 'argsort'
+        score = np.array(score)
+        sorted_idx = np.argsort(score)
         # divide the idx according to layer and neuron
         neuron_nb_layer = [i[1] for i in self.map_shape]
         neuron_list = [[i for i in range(nb)] for (i,nb) in enumerate(neuron_nb_layer)]
@@ -172,13 +177,14 @@ class CulpritNeuronScore():
         layer_list = functools.reduce(operator.add, layer_list)
         neuron_seq = []
         assert len(layer_list) == len(neuron_list) == len(score) == len(sorted_idx), 'score list lengths are not equal!'
-        for i in sorted_idx:
+        for i in sorted_idx[::-1]:
             layer_idx = layer_list[i]
             neuron_idx = neuron_list[i]
             neuron_seq.append((layer_idx, neuron_idx))
-#        print(score)
-#        print(neuron_seq)
-        return neuron_seq, score.numpy()
+            #print(score[i])
+        # return neuron_seq, score.numpy()
+        return neuron_seq, score
+    
 if __name__ == '__main__':
    clpt = CulpritNeuronScore('./saved/') 
    score = clpt.culprit_freq()
