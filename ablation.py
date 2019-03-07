@@ -71,9 +71,7 @@ class Ablation():
 #            m.register_forward_hook(print_activation_map)
 
         self.abl_log = []
-        # if accumulate the ablation, then the model will be ablated with all the neurons in the neuron_seq
-        # if not accumulate, then only one neuron in the neuron_seq will be ablated each trial
-        self.abl_accumulate = True  
+
 
     def evaluate(self):
         total_loss = 0.0
@@ -168,40 +166,57 @@ def random_ablation(neuron_nb):
     return abl_seq
 
 
-def visualize_accumulate(abl_logs, class_specific = False):
+def visualize_accumulate(abl_logs, class_specific = False, culprit_method = None):
     '''
     visualize the neuron ablation w.r.t the evaluating metrics.
     the abl_log is a list of neurons ablated sequencially, (neuron, abl_log)
     '''
     accs = []
+    # aggregate the accuracy 
     for log in abl_logs:
         acc = [list(i[1].items())[1][1] for i in log]
         accs.append(acc)
-    print(accs)
-    plt.plot(accs[0], label = "Ablate from the most culprit neuron", linewidth=2.0)
+    # plot
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
     for acc in accs[1:]:
-        plt.plot(acc, '--')
-    plt.xlabel('Number of randomly ablated neurons')
-    plt.ylabel('Accuracy')
-    plt.legend()
+        ax.plot(acc, '--', color ='#C0C0C0', label = 'Random ablation baseline', linewidth=1)
+    ax.plot(accs[0], 'r', label = "Culprit neurons ablation", linewidth=2.0)
+    ax.set_xlabel('Number of ablated neurons')
+    ax.set_ylabel('Accuracy')
+    # Get artists and labels for legend and chose which ones to display
+    display = (0,len(accs)-1)
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend([handle for i,handle in enumerate(handles) if i in display],
+              [label for i,label in enumerate(labels) if i in display], loc = 'best')
+    ax.set_title('Ablate culprit neurons sequentially {}'.format(culprit_method))
     plt.show()
+    plt.clf() 
+    plt.gcf()
+    plt.close()
 
-def visualize_neuron_ablation(abl_logs):
+def visualize_individual_ablation(abl_logs, culprit_method = None):
     '''
+    perform single neuron ablation, i.e.: without accumulation the effect from previous neuron ablation
     visualize the neuron ablation w.r.t the evaluating metrics.
     the abl_log is a list of neurons ablated sequencially, [acc] 
     '''
-    accs = [log[1]['overal_acc'] for log in abl_logs]
-    print('*** Accuracy is {}'.format(accs))
-    acc_drop = accs[0] - np.array(accs[1:])
-    plt.hlines(accs[0],xmin = 0, xmax = len(accs), linestyles= 'dashed', label = 'initial accuracy')
-    plt.scatter(range(1,len(accs[1:])+1) , accs[1:])
-    plt.xlabel('Ablate neurons according to their culprit score')
-    plt.ylabel('Accuracy after ablate one neuron, compared with baseline')
-        
+    baseline_acc = abl_logs[0][1]['overal_acc']
+    culprit_accs = [log[0][1]['overal_acc'] for log in abl_logs[1]]
+    random_accs = [log[0][1]['overal_acc'] for log in abl_logs[2]]
+    plt.figure(figsize=(10,8))
+    plt.hlines(baseline_acc, xmin = 0, xmax = len(culprit_accs), linestyles= 'dashed', label = 'Initial accuracy', linewidth=0.8)
+    plt.scatter(range(1,len(random_accs)+1) , random_accs, color = 'g', marker = '^', label = 'Random ablated', s=5)
+    plt.scatter(range(1,len(culprit_accs)+1) , culprit_accs, color ='r', marker = 'o', label = 'Culprit ablated', s=10)
+    plt.xlabel('Ablation index')
+    plt.ylabel('Accuracy')
+    plt.title('Ablate culprit neurons individually {}'.format(culprit_method))
+    plt.legend(loc = 'best')
     plt.show()
+    plt.clf() 
+    plt.close()
 
-def ablation_test(config, resume, selected_neurons, accumulate=False):
+def ablation_test(config, resume, selected_neurons, accumulate=False, culprit_method = None):
     '''
     ablate neurons and visualize
     if accumulate the ablation, then the model will be ablated with all the neurons in the neuron_seq
@@ -230,15 +245,25 @@ def ablation_test(config, resume, selected_neurons, accumulate=False):
             trial_log += log
             trial_logs.append(trial_log)
             print('*** Ablating the {i}th trial'.format(i=i+1))
-        visualize_accumulate(trial_logs)
+        visualize_accumulate(trial_logs, culprit_method = culprit_method)
         abl_logs = trial_logs
     else:  # ablate only one neuron for each trial
         abl_logs.append(((None, None), baseline.get_original_metric())) # get the intial model performance as baseline
+        # ablate according to culprit sequence
+        culprit_log = []
         for neuron in selected_neurons:
             abl = Ablation(config, [neuron], resume)
             log = abl.ablation()
-            abl_logs += log
-        visualize_neuron_ablation(abl_logs)
+            culprit_log.append(log)
+        # ablate to random sequence as control
+        selected_neurons = random_ablation(baseline.get_neuron_nb()) # generate a list of random neurons
+        random_log = []
+        for neuron in selected_neurons:
+            abl = Ablation(config, [neuron], resume)
+            log = abl.ablation()
+            random_log.append(log)
+        abl_logs += [culprit_log, random_log]
+        visualize_individual_ablation(abl_logs, culprit_method)
     return abl_logs
 
 
