@@ -16,7 +16,7 @@ def pipeline(config, resume):
     neuron_seq, score =  clpt.get_rank(score)
     # ablation test on the culprit score
     accumulate = False
-    ablation_test(config, resume, neuron_seq, accumlate)    
+    ablation_test(config, resume, neuron_seq, accumulate)    
 
 
 if __name__ == '__main__':
