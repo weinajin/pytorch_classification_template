@@ -127,7 +127,7 @@ class CulpritNeuronScore():
         # group activation according to the predict is right/wrong
         right_actv = features[self.label==1, :]
         wrong_actv = features[self.label==0, :]
-        # for each neuron, get the mean activation acrosse the full wrong/right datapoints 
+        # for each neuron, get the mean activation across the full wrong/right datapoints 
         r_mean = right_actv.mean(0)
         w_mean = wrong_actv.mean(0)
 #         print('right mean: {}'.format(r_mean))
