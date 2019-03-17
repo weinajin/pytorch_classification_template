@@ -9,7 +9,7 @@
     "data_loader": {
         "type": "ISICDataLoader",
         "args":{
-            "data_dir": "skindata/",  
+            "data_dir": "skindata/val.csv",  
             "batch_size": 128,
             "shuffle": true,
             "validation_split": 0.1,
@@ -41,7 +41,7 @@
     },
     "trainer": {
         "epochs": 100,
-        "save_dir": "saved/",
+        "save_dir": "skinmodel/",
         "save_period": 1,
         "verbosity": 2,
         
@@ -49,6 +49,6 @@
         "early_stop": 10,
         
         "tensorboardX": true,
-        "log_dir": "saved/runs"
+        "log_dir": "skinmodel/runs"
     }
 }
