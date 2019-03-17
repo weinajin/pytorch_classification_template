@@ -25,7 +25,7 @@ class ExtractActivation():
         # setup data_loader instances
         self.data_loader = getattr(module_data, config['data_loader']['type'])(
             config['data_loader']['args']['data_dir'],
-            batch_size= 16 , 
+            batch_size= 64 , 
             shuffle=False,
             validation_split=0.0,
             training=False,
@@ -67,9 +67,10 @@ class ExtractActivation():
                 or isinstance(prev_l, torch.nn.modules.linear.Linear):
                     # register hook on rectified activations
                     current_l.register_forward_hook(self.record_activation_map) 
-                elif isinstance(current_l, torch.nn.modules.linear.Linear):
-                    current_l.register_forward_hook(self.record_activation_map)                     
-#             print(type(self.all_layers[i]))        
+            # register hook on last layer, i.e.: logit before softmax
+            elif isinstance(current_l, torch.nn.modules.linear.Linear) and i == len(self.all_layers)-1:
+                current_l.register_forward_hook(self.record_activation_map)
+       
     
         # initialize the global variabel to record prediction and gt, and actv map 
         self.activation_map = dict()
@@ -95,7 +96,7 @@ class ExtractActivation():
     def record_activation_map(self, module, ipt, opt):
         '''
         record activation map for each layer (module)
-        each element in the module list is the pass of a data, not batch?
+        module_seq record the shape of activation for one batch (shape 0 is the size of batch)
         '''
         if module in self.module_seq:
             self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt.cpu()))
@@ -105,7 +106,7 @@ class ExtractActivation():
             self.map_shape.append(opt.shape)
             self.activation_map[self.module_seq[module]] = torch.Tensor()
             self.activation_map[self.module_seq[module]] = torch.cat((self.activation_map[self.module_seq[module]], opt.cpu()))
-        print('*** recorded actv map shape:', self.activation_map[self.module_seq[module]].shape, opt.shape)
+        print('*** cumulative actv map shape:', self.activation_map[self.module_seq[module]].shape)
 
         
         
@@ -130,6 +131,13 @@ class ExtractActivation():
                 batch_size = inputs.shape[0]
                 total_loss += loss.item() * batch_size
 
+            # sanity check if all activation map is non-negative
+            for i in self.activation_map:
+                if i < len(self.activation_map)-1: # did not consider the last fc layer
+                    actv = np.array(self.activation_map[i])
+                    non_neg = np.sum(actv<0)
+                    assert non_neg == 0, 'activation contains negative value in layer {}'.format(i+1)
+                
             # given the gt and output, calculate the eval metrics for the whole val set
             for i, metric in enumerate(self.class_metric_fns):
                 class_metrics[metric.__name__].append(metric(self.pred, self.gt))
@@ -161,7 +169,7 @@ class ExtractActivation():
             pickle.dump(self.pred.cpu(), output)
         with open(path + 'map_shape.pkl', 'wb') as output:
             pickle.dump(self.map_shape, output)
-        print('data saved')
+        print('*** activation data saved ***')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')

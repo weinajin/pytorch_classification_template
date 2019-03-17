@@ -43,7 +43,7 @@
         "epochs": 100,
         "save_dir": "skinmodel/",
         "save_period": 1,
-        "verbosity": 2,
+        "verbosity": 1,
         
         "monitor": "min val_loss",
         "early_stop": 10,
