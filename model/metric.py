@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from sklearn import metrics
 
-target_names = range(10)  # list of strings
+target_names = range(2)  # list of strings
 
 def overal_acc(output, target):
     with torch.no_grad():
@@ -12,7 +12,7 @@ def overal_acc(output, target):
         correct += torch.sum(pred == target).item()
     return correct / len(target)
 
-def topk_acc(output, target, k=3):
+def topk_acc(output, target, k=len(target_names)):
     with torch.no_grad():
         pred = torch.topk(output, k, dim=1)[1]
         assert pred.shape[0] == len(target)
