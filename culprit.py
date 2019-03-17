@@ -65,7 +65,7 @@ class CulpritNeuronScore():
         assert self.gt.shape[0] == self.pred_prob.shape[0], 'pred and gt do not have the same datapoints, pred {}, gt {}'.format(self.pred_prob.shape, self.gt.shape)
         for i in range(len(self.map_shape)):
             assert self.actv_map[i].size()[1:] == self.map_shape[i][1:], 'activation map {} and map shape are not at the same length, activateion map {}, map_shape {}.'.format(i, self.actv_map[i].size(), self.map_shape[i])
-        print('*** the activation map shape is: {} .'.format(self.map_shape))
+        print('*** actv shape (ignore dim 0 - batch size) is: {} .'.format(self.map_shape))
         print('*** data loaded ***')
 
 
@@ -75,7 +75,7 @@ class CulpritNeuronScore():
         '''
         self.pred_class = torch.argmax(self.pred_prob, dim = 1)
         self.label = self.pred_class == self.gt
-        print('*** label size is {}, positive label ratio is {}.'.format(self.label.size(), torch.sum(self.label)))
+        print('*** label size is {}, right prediction is {}.'.format(self.label.size(), torch.sum(self.label)))
 
 
     def get_feature(self, mode = 'mean'):
@@ -113,9 +113,9 @@ class CulpritNeuronScore():
         print('*** x of shape {} is normalized column wise. Before normalize, sum of mean and std for each col are: {}, {}. After normalize: {}, {}.'.format(x.shape, x.mean(0).sum(), x.std(0).sum(), x_normed.mean(0).sum(), x_normed.std(0).sum()))
         return x_normed
 
-    def culprit_ratio(self, normalized = True, absolute = True):
+    def culprit_ratio(self, target_class, normalized = True, absolute = True):
         '''
-        calculate the culprit according to the statistics of activation map w.r.t. right/wrong pred.
+        calculate the culprit vector for a given class, according to the statistics of activation map w.r.t. right/wrong pred.
         for each neuron, calculate its mean ratio for R/W activation group. 
         normalized = True, normalized each neuron's activation by dividing the activations across the dataset, before calculating the ratio.
         '''
@@ -140,8 +140,9 @@ class CulpritNeuronScore():
 #         print(ratio.shape, ratio)
         return ratio.numpy()
 
-    def culprit_freq(self, normalized = True):
+    def culprit_freq(self, target_class, normalized = True):
         '''
+        calculate the culprit vector for a given class.
         count the time of neuron firing when prediction goes wrong. fire is when the activation above mean
         '''
         features = self.feature.clone()
@@ -161,9 +162,30 @@ class CulpritNeuronScore():
 #        print(freq)
         return freq
 
+    def culprit_select(self, target_class):
+        '''
+        calculate the culprit vector for a given class
+        '''
+        return 
+    
+    
+    def culprit_stat(self, target_class):
+        '''
+        calculate the culprit vector for a given class
+        '''
+        
+        
+    def get_culprit_matrix(self, method = None):
+        '''
+        generate culprit vector for each class
+        choose culprit method from method dict
+        '''
+        method_dict = {'freq': self.culprit_freq, 'ratio': self.culprit_ratio, 'select': self.culprit_select, 'stat': self.culprit_stat}
+        
     def get_rank(self, score):
         '''
         get neurons rankings according to the culpritness score
+        only needed in ablation test.
         '''
         #score = torch.Tensor(score)
         #sorted_idx = torch.argsort(score, descending = True)  # AttributeError: module 'torch' has no attribute 'argsort'
