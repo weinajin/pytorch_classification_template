@@ -149,6 +149,16 @@ class Uncertainty():
         
         
         
-        
+    def baseline(self, culprit_mtx):
+        '''
+        generate random culprit score with the same distribution of the input culprit_mtx
+        '''
+        return
+
+    def layer_specific_uncertainty(self):
+        '''
+        pick up some layer which has the strong indication of uncertainty
+        '''
+        return
         
         
