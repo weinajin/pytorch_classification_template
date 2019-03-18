@@ -45,6 +45,7 @@ class CulpritNeuronScore():
         self.wrong_actv = None
         self.get_label()
         self.get_feature()
+        self.nb_classes = 2
 
 #        self.culprit_score = None
 
@@ -113,6 +114,9 @@ class CulpritNeuronScore():
         print('*** x of shape {} is normalized column wise. Before normalize, sum of mean and std for each col are: {}, {}. After normalize: {}, {}.'.format(x.shape, x.mean(0).sum(), x.std(0).sum(), x_normed.mean(0).sum(), x_normed.std(0).sum()))
         return x_normed
 
+    
+    
+    
     def culprit_ratio(self, target_class, normalized = True, absolute = True):
         '''
         calculate the culprit vector for a given class, according to the statistics of activation map w.r.t. right/wrong pred.
@@ -162,6 +166,8 @@ class CulpritNeuronScore():
 #        print(freq)
         return freq
 
+
+
     def culprit_select(self, target_class):
         '''
         calculate the culprit vector for a given class
@@ -173,14 +179,25 @@ class CulpritNeuronScore():
         '''
         calculate the culprit vector for a given class
         '''
+        return
         
+
         
     def get_culprit_matrix(self, method = None):
         '''
-        generate culprit vector for each class
-        choose culprit method from method dict
+        generate culprit vector for each class.
+        the row vector stack to be a matrix, where each row is for one class.
+        choose culprit method from method dict.
         '''
         method_dict = {'freq': self.culprit_freq, 'ratio': self.culprit_ratio, 'select': self.culprit_select, 'stat': self.culprit_stat}
+        lst = []
+        for i in self.nb_classes:
+            culprit_vector = method_dict[method](i)
+            lst.append(culprit_vector)
+        culprit_matrix = np.stack(lst)
+        print('*** {} method, culprit matrix shape is: {}'.format(method, culprit_matrix.shape))
+        return culprit_matrix
+        
         
     def get_rank(self, score):
         '''
