@@ -150,6 +150,7 @@ class CulpritNeuronScore():
         calculate the culprit vector for a given class.
         count the time of neuron firing when prediction goes wrong. fire is when the activation above mean
         '''
+        # todo, class specific
         features = self.feature.clone()
         if normalized:
             features = self.normalize(features) 
@@ -171,6 +172,7 @@ class CulpritNeuronScore():
         '''
         calculate the culprit vector for a given class
         '''
+        # todo
         return 
     
     
@@ -178,6 +180,7 @@ class CulpritNeuronScore():
         '''
         calculate the culprit vector for a given class
         '''
+        # todo
         return
         
 
@@ -199,17 +202,7 @@ class CulpritNeuronScore():
         return culprit_matrix
         
         
-    def get_rank(self, score):
-        '''
-        get neurons rankings according to the culpritness score - a vector
-        
-    def get_culprit_matrix(self, method = None):
-        '''
-        generate culprit vector for each class
-        choose culprit method from method dict
-        '''
-        method_dict = {'freq': self.culprit_freq, 'ratio': self.culprit_ratio, 'select': self.culprit_select, 'stat': self.culprit_stat}
-        
+
     def get_rank(self, score):
         '''
         get neurons rankings according to the culpritness score

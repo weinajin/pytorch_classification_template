@@ -110,7 +110,7 @@ class ExtractActivation():
 
         
         
-    def evaluate(self):
+    def extract(self):
         total_loss = 0.0
         scalar_metrics = torch.zeros(len(self.metric_fns))
         class_metrics = {met.__name__: [] for met in self.class_metric_fns} 
@@ -160,7 +160,12 @@ class ExtractActivation():
     def get_activation(self):
         return self.activation_map
 
+    def get_map_shape(self):
+        return self.map_shape
+    
     def save_data(self, path):
+        assert (self.activation_map and self.gt and self.pred and self.map_shape), \
+        print('!!! the activations has not generated, run extract() first !!!')
         with open(path + 'activationMap.pkl', 'wb') as output:
             pickle.dump(self.activation_map, output)
         with open(path + 'gt.pkl', 'wb') as output:
@@ -171,6 +176,7 @@ class ExtractActivation():
             pickle.dump(self.map_shape, output)
         print('*** activation data saved ***')
 
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
 
@@ -195,5 +201,5 @@ if __name__ == '__main__':
         os.environ["CUDA_VISIBLE_DEVICES"]=args.device
         
     extract = ExtractActivation(config, args.resume) 
-    extract.evaluate()
+    extract.extract()
     extract.save_data('./saved/')
