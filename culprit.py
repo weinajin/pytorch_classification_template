@@ -117,20 +117,24 @@ class CulpritNeuronScore():
     
     
     
-    def culprit_ratio(self, target_class, normalized = True, absolute = True):
+    def culprit_ratio(self, target_class, normalized = False, absolute = True):
         '''
         calculate the culprit vector for a given class, according to the statistics of activation map w.r.t. right/wrong pred.
         for each neuron, calculate its mean ratio for R/W activation group. 
         normalized = True, normalized each neuron's activation by dividing the activations across the dataset, before calculating the ratio.
         '''
         # get normalized activations
-        features = self.feature.clone()
-        normalized = False
+        features_clone = self.feature.clone()
         if normalized:
-            features = self.normalize(features)
+            features_clone = self.normalize(features_clone)
+        cls_feat = features_clone[self.gt == target_class]
+        cls_label = self.pred_class[self.gt == target_class]
+
         # group activation according to the predict is right/wrong
-        right_actv = features[self.label==1, :]
-        wrong_actv = features[self.label==0, :]
+        right_actv = cls_feat[cls_label==target_class, :]
+        wrong_actv = cls_feat[cls_label!=target_class, :]
+        
+#         print(right_actv.shape, wrong_actv.shape)
         # for each neuron, get the mean activation across the full wrong/right datapoints 
         r_mean = right_actv.mean(0)
         w_mean = wrong_actv.mean(0)
@@ -191,8 +195,9 @@ class CulpritNeuronScore():
         '''
         method_dict = {'freq': self.culprit_freq, 'ratio': self.culprit_ratio, 'select': self.culprit_select, 'stat': self.culprit_stat}
         lst = []
-        for i in self.nb_classes:
-            culprit_vector = method_dict[method](i)
+        for i in range(self.nb_classes):
+            culprit_fn = method_dict[method]
+            culprit_vector = culprit_fn(i)
             lst.append(culprit_vector)
         culprit_matrix = np.stack(lst)
         print('*** {} method, culprit matrix shape is: {}'.format(method, culprit_matrix.shape))
@@ -201,7 +206,7 @@ class CulpritNeuronScore():
         
     def get_rank(self, score):
         '''
-        get neurons rankings according to the culpritness score
+        get neurons rankings according to the culpritness score - a vector
         only needed in ablation test.
         '''
         #score = torch.Tensor(score)
