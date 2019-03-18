@@ -43,10 +43,11 @@ class Uncertainty():
             query_actv.save(saved_query_path)
         else:
             self.query_actv_map, self.query_gt, self.query_pred, self.query_shape = load_pkl(saved_query_path)
+        
         # prepare the data for further processing
         self.query_gt = self.query_gt.numpy()
         self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
-        self.query_actv = self.flatten_actv_map(self.query_actv_map)
+        self.query_actv = self.flatten_actv_map(self.query_actv_map) # flatten the activation map
         # get genralization error as groung-truth for experiment
         self.error = self.generalize_error()
         
@@ -78,7 +79,6 @@ class Uncertainty():
             pred_prob = pickle.load(f)
         with open(path + 'map_shape.pkl', 'rb') as f:
             map_shape = pickle.load(f)
-
         # sanity check for data shape
         assert gt.shape[0] == pred_prob.shape[0], 'pred and gt do not have the same datapoints, pred {}, gt {}'.format(pred_prob.shape, gt.shape)
         for i in range(len(map_shape)):
@@ -115,8 +115,40 @@ class Uncertainty():
         return self.clpt.get_culprit_matrix(method)
     
         
-    def generalize_error(self):
+    def get_generalize_error(self):
         return np.absolute(self.query_gt - self.query_pred)
 
-
-    def uncertain_score(self):
+    def get_cosine(self):
+        '''
+        cosine similairty for two given vector with the same length.
+        '''
+        return
+    
+    def get_pearson(self):
+        '''
+        pearson r correlation for two given vector with the same length.
+        '''
+        return
+    
+    
+    def get_uncertain_matrix(self, culprit_mtx, actv_mtx):
+        '''
+        Input: 
+            - culprit_matrix (from a trained model and val set)
+            - activation matrix (for query datasets) 
+        Output:
+            - a uncertain_matrix (row: the uncertain_vector for each class, given one data. col: datapoints)
+        Method:
+            - given the activation vector (from query image) and culprit matrix (from trained model),
+        compute a similarity score between the activation vector, and each row of the culprit matrix.
+        aggregate the uncertainty score for each class, to be a uncertainty vector for the data point.
+        the uncertain_matrix is simply the stack of uncertain vector for multiple datapoints.
+        '''
+        sim_method = {'cos': self.get_cosine, 'pearson': self.get_pearson}
+        return uncertain_matrix
+        
+        
+        
+        
+        
+        
