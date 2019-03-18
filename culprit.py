@@ -114,10 +114,7 @@ class CulpritNeuronScore():
         print('*** x of shape {} is normalized column wise. Before normalize, sum of mean and std for each col are: {}, {}. After normalize: {}, {}.'.format(x.shape, x.mean(0).sum(), x.std(0).sum(), x_normed.mean(0).sum(), x_normed.std(0).sum()))
         return x_normed
 
-    
-    
-    
-    def culprit_ratio(self, target_class, normalized = False, absolute = True):
+    def culprit_ratio(self, target_class, normalized = True, absolute = True):
         '''
         calculate the culprit vector for a given class, according to the statistics of activation map w.r.t. right/wrong pred.
         for each neuron, calculate its mean ratio for R/W activation group. 
@@ -170,8 +167,6 @@ class CulpritNeuronScore():
 #        print(freq)
         return freq
 
-
-
     def culprit_select(self, target_class):
         '''
         calculate the culprit vector for a given class
@@ -207,6 +202,17 @@ class CulpritNeuronScore():
     def get_rank(self, score):
         '''
         get neurons rankings according to the culpritness score - a vector
+        
+    def get_culprit_matrix(self, method = None):
+        '''
+        generate culprit vector for each class
+        choose culprit method from method dict
+        '''
+        method_dict = {'freq': self.culprit_freq, 'ratio': self.culprit_ratio, 'select': self.culprit_select, 'stat': self.culprit_stat}
+        
+    def get_rank(self, score):
+        '''
+        get neurons rankings according to the culpritness score
         only needed in ablation test.
         '''
         #score = torch.Tensor(score)
