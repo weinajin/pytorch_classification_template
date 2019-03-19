@@ -90,9 +90,15 @@ class Uncertainty():
     
     def flatten_actv_map(self, actv_map, mode = 'mean'):
         '''
-        1. flatten the activation map of one channel to be a scalar, so the shape of flattened 
-        mode: average, max, median
-        2. aggregate the neurons/channels at each layer as a activation vector
+        Input:
+            - actv_map, a dict of {layer idx: activation map for that layer of shape (datapoints, activations) - FC layer, or (datapoints, 3D activation maps) - conv}
+        Output: 
+            - actv_vector, of shape (datapoints, neurons)
+        Method:
+            1. flatten the 2D HxW activation map of one channel/unit/neuron to be a 1D scalar. 
+                mode: average, max, median
+            2. aggregate the neurons/channels at each layer to be single activation vector.
+        
         '''
         # flatten activation map
         mode_dict = {'mean': torch.mean, 'max': torch.max, 'median':torch.median}
