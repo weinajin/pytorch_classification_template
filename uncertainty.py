@@ -2,7 +2,8 @@ import numpy as np
 from activation import *
 from culprit import *
 import glob
-
+from scipy.special import softmax
+from sklearn.metrics import pairwise_distances
 
 class Uncertainty():
     '''
@@ -49,7 +50,7 @@ class Uncertainty():
         self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
         self.query_actv = self.flatten_actv_map(self.query_actv_map) # flatten the activation map
         # get genralization error as groung-truth for experiment
-        self.error = self.generalize_error()
+        self.error = self.get_generalize_error()
         
         # get culprit matrix
         saved_val_path = 'saved/val_actv'
@@ -93,7 +94,7 @@ class Uncertainty():
         Input:
             - actv_map, a dict of {layer idx: activation map for that layer of shape (datapoints, activations) - FC layer, or (datapoints, 3D activation maps) - conv}
         Output: 
-            - actv_vector, of shape (datapoints, neurons)
+            - actv_mtx, of shape (datapoints, neurons)
         Method:
             1. flatten the 2D HxW activation map of one channel/unit/neuron to be a 1D scalar. 
                 mode: average, max, median
@@ -110,61 +111,119 @@ class Uncertainty():
                 activation.append(convert_map_to_scalar)
             else:
                 activation.append(self.actv_map[i])
-        actv_vector = torch.cat(activation, dim=1)
-        print('*** actv vector shape is {}.'.format(actv_vector.shape))
-        return actv_vector
+        actv_mtx = torch.cat(activation, dim=1)
+        print('*** actv vector shape is {}.'.format(actv_mtx.shape))
+        return actv_mtx
     
     def culprit_matrix(self, method='Ratio'):
         '''
         generate culprit matrix from the saved actv, gt, pred
         '''
         return self.clpt.get_culprit_matrix(method)
+
+    def one_hot(a, num_classes):
+        return np.squeeze(np.eye(num_classes)[a.reshape(-1)])
     
         
     def get_generalize_error(self):
-        return np.absolute(self.query_gt - self.query_pred)
+        '''
+        for experiment results. get the difference between output prob as the generalization error. 
+        self.query_pred is a 2D array of (# of data, # of class)
+        compute softmax over dim 1
+        '''
+        nb_class = np.max(self.gt) +1
+        one_hot_gt = one_hot(self.gt)
+        prob = softmax(self.query_pred, axis = 1)
+        assert one_hot_gt.shape == prob.shape, '!!! one_hot_gt and prob are not the same shape !!!'
+        return np.absolute(one_hot_gt - prob)
 
-    def get_cosine(self):
+    def sim_cosine(self, vec1, vec2):
         '''
         cosine similairty for two given vector with the same length.
         '''
-        return
+        sim = np.dot(vec1, vec2)
+        return sim
     
-    def get_pearson(self):
+    def sim_pearson(self, vec1, vec2):
         '''
         pearson r correlation for two given vector with the same length.
         '''
+        # todo
         return
-    
-    
-    def get_uncertain_matrix(self, culprit_mtx, actv_mtx):
+
+    def sim_mutual_info(self, vec1, vec2):
+        '''
+        mutual information similarity of two vectors of the same lenght, but on different scale
+        '''
+        # todo
+        return
+
+    def get_uncertain_score(self, culprit_vec, query_actv_vec, method = 'pearson'):
+        '''
+        Input:
+            - culprit_vec: culprit vector for one class of the model
+            - query_actv_vec: the flatten activation of the query data passing over the model
+            - method: a str indicate which similarity method to use
+        Output:
+            - uncertain_score: a score summarizing how similar the two vectors are. 
+        '''
+        sim_method = {'cos': self.sim_cosine, 'pearson': self.sim_pearson, \
+                'mi': self.sim_mutual_info}
+        uncertain_score = sim_method[method](culprit_vec, query_actv_vec)
+        return uncertain_score
+
+
+    def get_uncertain_matrix(self, culprit_mtx, actv_mtx, method='pearson'):
         '''
         Input: 
-            - culprit_matrix (from a trained model and val set)
-            - activation matrix (for query datasets) 
+            - culprit_matrix (from a trained model and val set), shape (# of class, # of neurons)
+            - activation matrix (from query datasets) , shape (# of data, # of neurons)
         Output:
-            - a uncertain_matrix (row: the uncertain_vector for each class, given one data. col: datapoints)
+            - a uncertain_matrix of shape (# of datapoints, # of class) 
+            (each row: the uncertain_vector for each class, given one data. rows are a stack of multiple datapoints)
         Method:
             - given the activation vector (from query image) and culprit matrix (from trained model),
         compute a similarity score between the activation vector, and each row of the culprit matrix.
         aggregate the uncertainty score for each class, to be a uncertainty vector for the data point.
         the uncertain_matrix is simply the stack of uncertain vector for multiple datapoints.
         '''
-        sim_method = {'cos': self.get_cosine, 'pearson': self.get_pearson}
+        uncertain_matrix = []
+        pairwise_distances(culprit_mtx, actv_mtx, metric = method)
+#        for query_actv_vec in actv_mtx:
+#            # process datapoints row-wise in the query data actv_mtx
+#            uncertain_vector = []
+#            for culprit_vec in culprit_mtx:
+#                uncertain_score = self.get_uncertain_score(culprit_vec, query_actv_vec, method)
+#                uncertain_vector.append(uncertain_score)
+#            uncertain_matrix.append(uncertain_vector)
+#        uncertain_matrix = np.array(uncertain_matrix)
         return uncertain_matrix
         
+
+    def compare_gt_error(self, uncertain_matrix):
+        '''
+        compare the uncertain matrix results with self.error (a 2D array of (#of data, # of class))
+        do it row wise for two matrix. 
+        Output:
+            - a vector, with each scalar showing the similarity between the correlation between each class's prediction error and the uncertain_vec.
+                the vector is the aggregete of the datapoints in the query dataset.
+        '''
+        assert uncertain_matrix.shape == self.error.shape, '!!! uncertain_matrix and self.error are not in the same shape !!!'
+        correlation_vec = get_pearson(uncertain_matrix, self.error)
+        return correlation_vec
         
-        
-    def baseline(self, culprit_mtx):
+    def get_baseline(self, culprit_mtx):
         '''
         generate random culprit score with the same distribution of the input culprit_mtx
         '''
+        # todo
         return
 
     def layer_specific_uncertainty(self):
         '''
         pick up some layer which has the strong indication of uncertainty
         '''
+        # todo self.map_shape
         return
         
         
