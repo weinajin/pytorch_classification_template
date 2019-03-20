@@ -16,6 +16,9 @@ import copy
 import pickle
 import json
 
+from torchvision.models import vgg16, alexnet
+# import torchvision
+
 class ExtractActivation():
     '''
     extract activation map, and the output and gt.  
@@ -34,11 +37,14 @@ class ExtractActivation():
 
         # build model architecture
         self.model = get_instance(module_arch, 'arch', config)
-        
+#         self.model = vgg16(pretrained=False)
+#         self.model = alexnet(pretrained=True)
         # remove all container/sequential layers to make extract actv map easy
         self.all_layers = []
         self.remove_sequential(self.model)
-#         print(self.all_layers)
+        for i in self.all_layers:
+            print(i)
+        print(len(self.all_layers))
 #         self.model.summary()
 
         # get function handles of loss and metrics
