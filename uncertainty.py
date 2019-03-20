@@ -51,8 +51,8 @@ class Uncertainty():
         # prepare the query data for further processing
         self.query_gt = self.query_gt.numpy()
         self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
-        self.query_actv = self.flatten_actv_map(self.query_actv_map) # flatten the activation map
-        assert np.isnan(uncty.query_actv).sum() == 0, '!!! query flatten activation contains Nan !!!'
+        self.query_actv = self.flatten_actv_map(self.query_actv_map, mode = 'max') # flatten the activation map
+        assert np.isnan(self.query_actv).sum() == 0, '!!! query flatten activation contains Nan !!!'
         # get genralization error as groung-truth for experiment
         self.error = self.get_generalize_error(self.query_gt, self.query_pred)
         
@@ -111,7 +111,10 @@ class Uncertainty():
         for i in range(len(actv_map)):
             if len(actv_map[i].size()) > 2:
                 actv_map_flattened =  actv_map[i].reshape(actv_map[i].shape[0], actv_map[i].shape[1], -1)
-                convert_map_to_scalar = mode_dict[mode](actv_map_flattened, dim = 2)
+                if mode == 'max':
+                    convert_map_to_scalar, _ = mode_dict[mode](actv_map_flattened, dim = 2)
+                else:
+                    convert_map_to_scalar = mode_dict[mode](actv_map_flattened, dim = 2)
                 activation.append(convert_map_to_scalar)
             else:
                 activation.append(actv_map[i])
