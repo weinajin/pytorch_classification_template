@@ -52,6 +52,7 @@ class Uncertainty():
         self.query_gt = self.query_gt.numpy()
         self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
         self.query_actv = self.flatten_actv_map(self.query_actv_map) # flatten the activation map
+        assert np.isnan(uncty.query_actv).sum() == 0, '!!! query flatten activation contains Nan !!!'
         # get genralization error as groung-truth for experiment
         self.error = self.get_generalize_error(self.query_gt, self.query_pred)
         
@@ -188,7 +189,7 @@ class Uncertainty():
         aggregate the uncertainty score for each class, to be a uncertainty vector for the data point.
         the uncertain_matrix is simply the stack of uncertain vector for multiple datapoints.
         '''
-        uncertain_matrix = pairwise_distances(culprit_mtx, actv_mtx, metric = sim_method)
+        uncertain_matrix = pairwise_distances(actv_mtx, culprit_mtx, metric = sim_method)
 #        for query_actv_vec in actv_mtx:
 #            # process datapoints row-wise in the query data actv_mtx
 #            uncertain_vector = []
@@ -221,8 +222,9 @@ class Uncertainty():
         '''
         generate random culprit score with the same distribution of the input culprit_mtx
         '''
-        # todo
-        return
+        mean, sigma = culprit_mtx.mean(), culprit_mtx.std()
+        rand_mtx = np.random.normal(mean, sigma, culprit_mtx.shape)
+        return rand_mtx
 
     def layer_specific_uncertainty(self):
         '''

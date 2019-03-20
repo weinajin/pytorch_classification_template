@@ -151,6 +151,7 @@ class CulpritNeuronScore():
         if absolute:
             selectivity = selectivity.abs()
 #         print((selectivity == 0.0).sum(), np.array(selectivity).min(), selectivity.max())
+        assert np.isnan(selectivity).sum() ==0, '!!! Nan value exists in culprit selectivity !!!'
         return selectivity
 
     def culprit_freq(self, target_class, normalized = True):
