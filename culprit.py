@@ -115,13 +115,15 @@ class CulpritNeuronScore():
         return x_normed
 
     def culprit_selectivity(self, target_class, normalized = False, absolute = False):
-        '''
+        ''' 
         calculate the culprit vector for a given class, according to the statistics of activation map w.r.t. right/wrong pred.
         for each neuron, calculate its mean ratio for R/W activation group. 
         normalized = True, normalized each neuron's activation by dividing the activations across the dataset, before calculating the ratio.
         '''
         # get normalized activations
         features_clone = self.feature.clone()
+        # negative exist in the last logits. the rest values are non-negative
+#         print(features_clone[:, :-2].min(), features_clone[:, :-2].max(), features_clone.shape)
         if normalized:
             features_clone = self.normalize(features_clone)
         cls_feat = features_clone[self.gt == target_class]
@@ -129,21 +131,27 @@ class CulpritNeuronScore():
 
         # group activation according to the predict is right/wrong
         right_actv = cls_feat[cls_label==target_class, :]
-        wrong_actv = cls_feat[cls_label!=target_class, :]
-        
-#         print(right_actv.shape, wrong_actv.shape)
+        wrong_actv = cls_feat[cls_label!=target_class, :]        
         # for each neuron, get the mean activation across the full wrong/right datapoints 
-        r_mean = right_actv.mean(0)
-        w_mean = wrong_actv.mean(0)
-#         print('right mean: {}'.format(r_mean))
-#         print('wrong mean: {}'.format(w_mean))
+        r_mean = right_actv.mean(0).numpy()
+        w_mean = wrong_actv.mean(0).numpy()
+        # activation distribution, median = min = 0, max ~= 2.8
+#         print(right_actv[:, :-2].min(), right_actv[:, :-2].median(), wrong_actv[:, :-2].min(), wrong_actv[:, :-2].median())
+#         print(r_mean[:-2].min(), r_mean[:-2].max(), w_mean[:-2].min(), w_mean[:-2].max())
+#         print(np.isnan(w_mean - r_mean).sum(), np.isnan(w_mean + r_mean).sum())
+#         print((w_mean - r_mean).median(), (w_mean - r_mean).max(), (w_mean + r_mean).median(), (w_mean + r_mean).max())
         # how active a neuron is in the wrong vs. right prediction is the culprit score
         # todo: how to deal with negatives? for now use absolute values
-        ratio = (w_mean - r_mean ) / (w_mean + r_mean) 
+        sum_mean = w_mean + r_mean
+        diff_mean = w_mean - r_mean
+        
+#         print(sum_mean.shape, sum_mean[:-2].mean(), sum_mean[:-2].min(), sum_mean[:-2].max(), (sum_mean == 0.0).sum())
+        selectivity = np.where(np.abs(sum_mean) >1e-10, diff_mean/sum_mean, sum_mean) 
+#         log_selectivity = np.log(w_mean - r_mean ) / np.log(w_mean + r_mean) 
         if absolute:
-            ratio = ratio.abs()
-#         print(ratio.shape, ratio)
-        return ratio.numpy()
+            selectivity = selectivity.abs()
+#         print((selectivity == 0.0).sum(), np.array(selectivity).min(), selectivity.max())
+        return selectivity
 
     def culprit_freq(self, target_class, normalized = True):
         '''

@@ -68,8 +68,7 @@ class Uncertainty():
         # culprit methods dictionary
         self.culprit_methods = \
         {'freq': self.clpt.culprit_freq, 
-         'ratio': self.clpt.culprit_ratio, 
-         'select': self.clpt.culprit_select, 
+         'select': self.clpt.culprit_selectivity, 
          'stat': self.clpt.culprit_stat}
 
     def load_pkl(self, path):
