@@ -62,7 +62,7 @@ class Uncertainty():
             config_val = json.load(open(config_valdata))
             val_actv = ExtractActivation(config_val, model_path) 
             val_actv.extract()
-            val_actv.save(saved_val_path)
+            val_actv.save_data(saved_val_path)
         # instantiate culprit instance
         self.clpt = CulpritNeuronScore(saved_val_path) 
         # culprit methods dictionary
