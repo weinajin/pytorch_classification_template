@@ -119,7 +119,7 @@ class Uncertainty():
         print('*** Flattened actv vector shape is {}.'.format(actv_mtx.shape))
         return actv_mtx
     
-    def culprit_matrix(self, method='Ratio'):
+    def get_culprit_matrix(self, method):
         '''
         generate culprit matrix from the saved actv, gt, pred
         '''
@@ -175,7 +175,7 @@ class Uncertainty():
 #         return uncertain_score
 
 
-    def get_uncertain_matrix(self, culprit_mtx, actv_mtx, method='pearson'):
+    def get_uncertain_matrix(self, culprit_mtx, actv_mtx, sim_method):
         '''
         Input: 
             - culprit_matrix (from a trained model and val set), shape (# of class, # of neurons)
@@ -189,7 +189,7 @@ class Uncertainty():
         aggregate the uncertainty score for each class, to be a uncertainty vector for the data point.
         the uncertain_matrix is simply the stack of uncertain vector for multiple datapoints.
         '''
-        uncertain_matrix = pairwise_distances(culprit_mtx, actv_mtx, metric = method)
+        uncertain_matrix = pairwise_distances(culprit_mtx, actv_mtx, metric = sim_method)
 #        for query_actv_vec in actv_mtx:
 #            # process datapoints row-wise in the query data actv_mtx
 #            uncertain_vector = []
@@ -203,7 +203,10 @@ class Uncertainty():
 
     def compare_gt_error(self, uncertain_matrix):
         '''
-        compare the uncertain matrix results with self.error (a 2D array of (#of data, # of class))
+        Input:
+            - self.error: a 2D array of (#of data, # of class)
+            - uncertain_matrix: 2D array of shape (# of data, # of class) 
+        compare the uncertain matrix results with self.error 
         do it row wise for two matrix. 
         Output:
             - a vector, with each scalar showing the similarity between the correlation between each class's prediction error and the uncertain_vec.
@@ -212,6 +215,8 @@ class Uncertainty():
         assert uncertain_matrix.shape == self.error.shape, '!!! uncertain_matrix and self.error are not in the same shape !!!'
         correlation_vec = get_pearson(uncertain_matrix, self.error)
         return correlation_vec
+        
+
         
     def get_baseline(self, culprit_mtx):
         '''
@@ -228,3 +233,9 @@ class Uncertainty():
         return
         
         
+    def run_experiment(self, method = 'select', sim_method = 'cosine'):
+        '''
+        Experiment running pipeline for one single culprit method
+        '''
+        clpt_mtx = self.get_culprit_matrix(method)
+        uncty_mtx = self.get_uncertain_matrix(clpt_mtx, self.query_actv, sim_method)        

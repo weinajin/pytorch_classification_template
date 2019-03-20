@@ -114,7 +114,7 @@ class CulpritNeuronScore():
         print('*** x of shape {} is normalized column wise. Before normalize, sum of mean and std for each col are: {}, {}. After normalize: {}, {}.'.format(x.shape, x.mean(0).sum(), x.std(0).sum(), x_normed.mean(0).sum(), x_normed.std(0).sum()))
         return x_normed
 
-    def culprit_ratio(self, target_class, normalized = True, absolute = True):
+    def culprit_selectivity(self, target_class, normalized = False, absolute = False):
         '''
         calculate the culprit vector for a given class, according to the statistics of activation map w.r.t. right/wrong pred.
         for each neuron, calculate its mean ratio for R/W activation group. 
@@ -139,7 +139,7 @@ class CulpritNeuronScore():
 #         print('wrong mean: {}'.format(w_mean))
         # how active a neuron is in the wrong vs. right prediction is the culprit score
         # todo: how to deal with negatives? for now use absolute values
-        ratio = w_mean / r_mean 
+        ratio = (w_mean - r_mean ) / (w_mean + r_mean) 
         if absolute:
             ratio = ratio.abs()
 #         print(ratio.shape, ratio)
@@ -168,12 +168,7 @@ class CulpritNeuronScore():
 #        print(freq)
         return freq
 
-    def culprit_select(self, target_class):
-        '''
-        calculate the culprit vector for a given class
-        '''
-        # todo
-        return 
+
     
     
     def culprit_stat(self, target_class):
@@ -191,7 +186,7 @@ class CulpritNeuronScore():
         the row vector stack to be a matrix, where each row is for one class.
         choose culprit method from method dict.
         '''
-        method_dict = {'freq': self.culprit_freq, 'ratio': self.culprit_ratio, 'select': self.culprit_select, 'stat': self.culprit_stat}
+        method_dict = {'freq': self.culprit_freq, 'select': self.culprit_selectivity, 'stat': self.culprit_stat}
         lst = []
         for i in range(self.nb_classes):
             culprit_fn = method_dict[method]
