@@ -24,15 +24,15 @@ def preprocess_ISICdata_2017(root_dir = 'skindata/', seg_dir='Train_Lesion'):
         writer = csv.writer(csv_file, delimiter=',')
         for k in range(len(melanoma)):
             filename = melanoma[k]
-            filename_seg = melanoma_seg[k]
+            filename_seg = melanoma[k]
             writer.writerow([filename] + [filename_seg] + ['1'])
         for k in range(len(nevus)):
             filename = nevus[k]
-            filename_seg = nevus_seg[k]
+            filename_seg = nevus[k]
             writer.writerow([filename] + [filename_seg] + ['0'])
         for k in range(len(sk)):
             filename = sk[k]
-            filename_seg = sk_seg[k]
+            filename_seg = sk[k]
             writer.writerow([filename] + [filename_seg] + ['0'])
     # training data oversample
     melanoma = glob.glob(os.path.join(root_dir, 'Train', 'melanoma', '*.jpg')); melanoma.sort()
@@ -46,15 +46,15 @@ def preprocess_ISICdata_2017(root_dir = 'skindata/', seg_dir='Train_Lesion'):
         for i in range(4):
             for k in range(len(melanoma)):
                 filename = melanoma[k]
-                filename_seg = melanoma_seg[k]
+                filename_seg = melanoma[k]
                 writer.writerow([filename] + [filename_seg] + ['1'])
         for k in range(len(nevus)):
             filename = nevus[k]
-            filename_seg = nevus_seg[k]
+            filename_seg = nevus[k]
             writer.writerow([filename] + [filename_seg] + ['0'])
         for k in range(len(sk)):
             filename = sk[k]
-            filename_seg = sk_seg[k]
+            filename_seg = sk[k]
             writer.writerow([filename] + [filename_seg] + ['0'])
     # val data
     melanoma = glob.glob(os.path.join(root_dir, 'Val', 'melanoma', '*.jpg')); melanoma.sort()
@@ -69,15 +69,15 @@ def preprocess_ISICdata_2017(root_dir = 'skindata/', seg_dir='Train_Lesion'):
         writer = csv.writer(csv_file, delimiter=',')
         for k in range(len(melanoma)):
             filename = melanoma[k]
-            filename_seg = melanoma_seg[k]
+            filename_seg = melanoma[k]
             writer.writerow([filename] + [filename_seg] + ['1'])
         for k in range(len(nevus)):
             filename = nevus[k]
-            filename_seg = nevus_seg[k]
+            filename_seg = nevus[k]
             writer.writerow([filename] + [filename_seg] + ['0'])
         for k in range(len(sk)):
             filename = sk[k]
-            filename_seg = sk_seg[k]
+            filename_seg = sk[k]
             writer.writerow([filename] + [filename_seg] + ['0'])
     # test data
     melanoma = glob.glob(os.path.join(root_dir, 'Test', 'melanoma', '*.jpg')); melanoma.sort()
@@ -91,15 +91,15 @@ def preprocess_ISICdata_2017(root_dir = 'skindata/', seg_dir='Train_Lesion'):
         writer = csv.writer(csv_file, delimiter=',')
         for k in range(len(melanoma)):
             filename = melanoma[k]
-            filename_seg = None#melanoma_seg[k]
+            filename_seg = melanoma[k]
             writer.writerow([filename] + [filename_seg] + ['1'])
         for k in range(len(nevus)):
             filename = nevus[k]
-            filename_seg = None# nevus_seg[k]
+            filename_seg = nevus[k]
             writer.writerow([filename] + [filename_seg] + ['0'])
         for k in range(len(sk)):
             filename = sk[k]
-            filename_seg = None# sk_seg[k]
+            filename_seg = sk[k]
             writer.writerow([filename] + [filename_seg] + ['0'])
 
 if __name__ == '__main__':

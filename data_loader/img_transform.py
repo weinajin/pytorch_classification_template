@@ -24,8 +24,8 @@ class Resize(object):
     def __call__(self, sample):
         image, image_seg, label = sample['image'], sample['image_seg'], sample['label']
         img = trF.resize(image, self.size, self.interpolation)
-        img_seg = trF.resize(image_seg, self.size, Image.NEAREST)
-        return {'image': img, 'image_seg': img_seg, 'label': label}
+#         img_seg = trF.resize(image_seg, self.size, Image.NEAREST)
+        return {'image': img, 'image_seg': img, 'label': label}
 
 
 class RatioCenterCrop(object):
@@ -39,8 +39,8 @@ class RatioCenterCrop(object):
         width, height = image.size
         new_size = self.ratio * min(width, height)
         img = trF.center_crop(image, new_size)
-        img_seg = trF.center_crop(image_seg, new_size)
-        return {'image': img, 'image_seg': img_seg, 'label': label}
+#         img_seg = None # trF.center_crop(image_seg, new_size)
+        return {'image': img, 'image_seg': img, 'label': label}
 
 
 class CenterCrop(object):
@@ -53,8 +53,8 @@ class CenterCrop(object):
     def __call__(self, sample):
         image, image_seg, label = sample['image'], sample['image_seg'], sample['label']
         img = trF.center_crop(image, self.size)
-        img_seg = trF.center_crop(image_seg, self.size)
-        return {'image': img, 'image_seg': img_seg, 'label': label}
+#         img_seg = None #  trF.center_crop(image_seg, self.size)
+        return {'image': img, 'image_seg': img, 'label': label}
 
 
 class RandomCrop(object):
@@ -78,8 +78,8 @@ class RandomCrop(object):
         image, image_seg, label = sample['image'], sample['image_seg'], sample['label']
         i, j, h, w = self.get_params(image, self.size)
         img = trF.crop(image, i, j, h, w)
-        img_seg = trF.crop(image_seg, i, j, h, w)
-        return {'image': img, 'image_seg': img_seg, 'label': label}
+#         img_seg = trF.crop(image_seg, i, j, h, w)
+        return {'image': img, 'image_seg': img, 'label': label}
 
 
 class RandomRotate(object):
@@ -98,8 +98,8 @@ class RandomRotate(object):
         image, image_seg, label = sample['image'], sample['image_seg'], sample['label']
         angle = self.get_params()
         img = trF.rotate(image, angle, self.resample, self.expand, self.center)
-        img_seg = trF.rotate(image_seg, angle, self.resample, self.expand, self.center)
-        return {'image': img, 'image_seg': img_seg, 'label': label}
+#         img_seg = trF.rotate(image_seg, angle, self.resample, self.expand, self.center)
+        return {'image': img, 'image_seg': img, 'label': label}
 
 
 class RandomHorizontalFlip(object):
@@ -110,8 +110,8 @@ class RandomHorizontalFlip(object):
         if random.random() < self.p:
             image, image_seg, label = sample['image'], sample['image_seg'], sample['label']
             img = trF.hflip(image)
-            img_seg = trF.hflip(image_seg)
-            return {'image': img, 'image_seg': img_seg, 'label': label}
+#             img_seg = trF.hflip(image_seg)
+            return {'image': img, 'image_seg': img, 'label': label}
         return sample
 
 
@@ -123,8 +123,8 @@ class RandomVerticalFlip(object):
         if random.random() < self.p:
             image, image_seg, label = sample['image'], sample['image_seg'], sample['label']
             img = trF.vflip(image)
-            img_seg = trF.vflip(image_seg)
-            return {'image': img, 'image_seg': img_seg, 'label': label}
+#             img_seg = trF.vflip(image_seg)
+            return {'image': img, 'image_seg': img, 'label': label}
         return sample
 
 
@@ -132,8 +132,8 @@ class ToTensor(object):
     def __call__(self, sample):
         image, image_seg, label = sample['image'], sample['image_seg'], sample['label']
         img = trF.to_tensor(image)
-        img_seg = trF.to_tensor(image_seg)
-        return {'image': img, 'image_seg': img_seg, 'label': label}
+#         img_seg = trF.to_tensor(image_seg)
+        return {'image': img, 'image_seg': img, 'label': label}
 
 
 class Normalize(object):
@@ -144,4 +144,4 @@ class Normalize(object):
     def __call__(self, sample):
         image, image_seg, label = sample['image'], sample['image_seg'], sample['label']
         img = trF.normalize(image, self.mean, self.std)
-        return {'image': img, 'image_seg': image_seg, 'label': label}
+        return {'image': img, 'image_seg': image, 'label': label}

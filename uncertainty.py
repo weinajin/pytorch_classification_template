@@ -4,6 +4,8 @@ from culprit import *
 import glob
 from scipy.special import softmax
 from sklearn.metrics import pairwise_distances
+import json
+from model.metric import one_hot
 
 class Uncertainty():
     '''
@@ -27,40 +29,42 @@ class Uncertainty():
             
     '''
     
-    def __init__(self, model_path = 'skinmodel/checkpoint.pth', config_querydata = 'config_skin_alexnet_query.json', config_valdata = 'config_skin_alexnet_val.json'):
+    def __init__(self, experiment_saved_path, model_path = 'skinmodel/checkpoint.pth', config_querydata = 'config_skin_alexnet_query.json', config_valdata = 'config_skin_alexnet_val.json'):
         '''
         load model activation for query and val dataset
         '''
         # get query dataset actv, gt, pred 
-        saved_query_path = 'saved/val_actv'
+        saved_query_path = experiment_saved_path + '/query_actv/'
         if len(glob.glob(saved_query_path+'*.pkl')) != 4:
             # if there is no saved query actv
-            query_actv = ExtractActivation(config_querydata, model_path) 
-            query_actv.evaluate()
+            config_query = json.load(open(config_querydata))
+            query_actv = ExtractActivation(config_query, model_path) 
+            query_actv.extract()
+            query_actv.save_data(saved_query_path)
             self.query_gt = query_actv.get_gt()
-            self.query_pred = query_actv.get_pred()
+            self.query_pred = query_actv.get_predict()
             self.query_actv_map = query_actv.get_activation()
             self.query_shape = query_actv.get_map_shape()
-            query_actv.save(saved_query_path)
         else:
-            self.query_actv_map, self.query_gt, self.query_pred, self.query_shape = load_pkl(saved_query_path)
+            self.query_actv_map, self.query_gt, self.query_pred, self.query_shape = self.load_pkl(saved_query_path)
         
-        # prepare the data for further processing
+        # prepare the query data for further processing
         self.query_gt = self.query_gt.numpy()
         self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
         self.query_actv = self.flatten_actv_map(self.query_actv_map) # flatten the activation map
         # get genralization error as groung-truth for experiment
-        self.error = self.get_generalize_error()
+        self.error = self.get_generalize_error(self.query_gt, self.query_pred)
         
         # get culprit matrix
-        saved_val_path = 'saved/val_actv'
+        saved_val_path = experiment_saved_path + '/val_actv/'
         if len(glob.glob(saved_val_path+'*.pkl')) != 4:
             # if saved 4 pkl file do not exist, generate one
-            val_actv = ExtractActivation(config_valdata, model_path) 
-            val_actv.evaluate()
-            val_actv.save(saved_actv_path)
+            config_val = json.load(open(config_valdata))
+            val_actv = ExtractActivation(config_val, model_path) 
+            val_actv.extract()
+            val_actv.save(saved_val_path)
         # instantiate culprit instance
-        self.clpt = CulpritNeuronScore(saved_actv_path) 
+        self.clpt = CulpritNeuronScore(saved_val_path) 
         # culprit methods dictionary
         self.culprit_methods = \
         {'freq': self.clpt.culprit_freq, 
@@ -83,8 +87,8 @@ class Uncertainty():
         # sanity check for data shape
         assert gt.shape[0] == pred_prob.shape[0], 'pred and gt do not have the same datapoints, pred {}, gt {}'.format(pred_prob.shape, gt.shape)
         for i in range(len(map_shape)):
-            assert actv_map[i].size()[1:] == map_shape[i][1:], 'activation map {} and map shape are not at the same length, activateion map {}, map_shape {}.'.format(i, self.actv_map[i].size(), self.map_shape[i])
-        print('*** actv shape (ignore dim 0 - batch size) is: {} .'.format(self.map_shape))
+            assert actv_map[i].size()[1:] == map_shape[i][1:], 'activation map {} and map shape are not at the same length, activateion map {}, map_shape {}.'.format(i, actv_map[i].size(), map_shape[i])
+        print('*** actv shape (ignore dim 0 - batch size) is: {} .'.format(map_shape))
         print('*** data loaded ***')
         return actv_map, gt, pred_prob, map_shape
 
@@ -110,9 +114,9 @@ class Uncertainty():
                 convert_map_to_scalar = mode_dict[mode](actv_map_flattened, dim = 2)
                 activation.append(convert_map_to_scalar)
             else:
-                activation.append(self.actv_map[i])
+                activation.append(actv_map[i])
         actv_mtx = torch.cat(activation, dim=1)
-        print('*** actv vector shape is {}.'.format(actv_mtx.shape))
+        print('*** Flattened actv vector shape is {}.'.format(actv_mtx.shape))
         return actv_mtx
     
     def culprit_matrix(self, method='Ratio'):
@@ -121,28 +125,26 @@ class Uncertainty():
         '''
         return self.clpt.get_culprit_matrix(method)
 
-    def one_hot(a, num_classes):
-        return np.squeeze(np.eye(num_classes)[a.reshape(-1)])
     
         
-    def get_generalize_error(self):
+    def get_generalize_error(self, gt, pred):
         '''
         for experiment results. get the difference between output prob as the generalization error. 
         self.query_pred is a 2D array of (# of data, # of class)
         compute softmax over dim 1
         '''
-        nb_class = np.max(self.gt) +1
-        one_hot_gt = one_hot(self.gt)
-        prob = softmax(self.query_pred, axis = 1)
+        nb_class = np.max(gt) +1
+        one_hot_gt = one_hot(gt, nb_class)
+        prob = softmax(pred, axis = 1)
         assert one_hot_gt.shape == prob.shape, '!!! one_hot_gt and prob are not the same shape !!!'
         return np.absolute(one_hot_gt - prob)
 
-    def sim_cosine(self, vec1, vec2):
-        '''
-        cosine similairty for two given vector with the same length.
-        '''
-        sim = np.dot(vec1, vec2)
-        return sim
+#     def sim_cosine(self, vec1, vec2):
+#         '''
+#         cosine similairty for two given vector with the same length.
+#         '''
+#         sim = np.dot(vec1, vec2)
+#         return sim
     
     def sim_pearson(self, vec1, vec2):
         '''
@@ -158,19 +160,19 @@ class Uncertainty():
         # todo
         return
 
-    def get_uncertain_score(self, culprit_vec, query_actv_vec, method = 'pearson'):
-        '''
-        Input:
-            - culprit_vec: culprit vector for one class of the model
-            - query_actv_vec: the flatten activation of the query data passing over the model
-            - method: a str indicate which similarity method to use
-        Output:
-            - uncertain_score: a score summarizing how similar the two vectors are. 
-        '''
-        sim_method = {'cos': self.sim_cosine, 'pearson': self.sim_pearson, \
-                'mi': self.sim_mutual_info}
-        uncertain_score = sim_method[method](culprit_vec, query_actv_vec)
-        return uncertain_score
+#     def get_uncertain_score(self, culprit_vec, query_actv_vec, method = 'pearson'):
+#         '''
+#         Input:
+#             - culprit_vec: culprit vector for one class of the model
+#             - query_actv_vec: the flatten activation of the query data passing over the model
+#             - method: a str indicate which similarity method to use
+#         Output:
+#             - uncertain_score: a score summarizing how similar the two vectors are. 
+#         '''
+#         sim_method = {'cos': self.sim_cosine, 'pearson': self.sim_pearson, \
+#                 'mi': self.sim_mutual_info}
+#         uncertain_score = sim_method[method](culprit_vec, query_actv_vec)
+#         return uncertain_score
 
 
     def get_uncertain_matrix(self, culprit_mtx, actv_mtx, method='pearson'):
@@ -187,8 +189,7 @@ class Uncertainty():
         aggregate the uncertainty score for each class, to be a uncertainty vector for the data point.
         the uncertain_matrix is simply the stack of uncertain vector for multiple datapoints.
         '''
-        uncertain_matrix = []
-        pairwise_distances(culprit_mtx, actv_mtx, metric = method)
+        uncertain_matrix = pairwise_distances(culprit_mtx, actv_mtx, metric = method)
 #        for query_actv_vec in actv_mtx:
 #            # process datapoints row-wise in the query data actv_mtx
 #            uncertain_vector = []

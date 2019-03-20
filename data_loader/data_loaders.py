@@ -20,10 +20,10 @@ class ISICDataset(udata.Dataset):
     def __getitem__(self, idx):
         pair = self.pairs[idx]
         image = Image.open(pair[0])
-        image_seg = Image.open(pair[1])
+        image_seg = None #Image.open(pair[1])
         label = int(pair[2])
         # construct one sample
-        sample = {'image': image, 'image_seg': image_seg, 'label': label}
+        sample = {'image': image, 'image_seg': image, 'label': label}
         # transform
         if self.transform:
             sample = self.transform(sample)

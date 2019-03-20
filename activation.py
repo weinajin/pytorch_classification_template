@@ -164,7 +164,8 @@ class ExtractActivation():
         return self.map_shape
     
     def save_data(self, path):
-        assert (self.activation_map and self.gt and self.pred and self.map_shape), \
+        assert (len(self.activation_map) > 0) and (self.gt is not None) \
+        and (self.pred is not None) and (len(self.map_shape) > 0 ), \
         print('!!! the activations has not generated, run extract() first !!!')
         with open(path + 'activationMap.pkl', 'wb') as output:
             pickle.dump(self.activation_map, output)

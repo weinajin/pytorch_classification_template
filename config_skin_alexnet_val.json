@@ -9,7 +9,7 @@
     "data_loader": {
         "type": "ISICDataLoader",
         "args":{
-            "data_dir": "skindata/val.csv",  
+            "data_dir": "skindata/test.csv",  
             "batch_size": 128,
             "shuffle": true,
             "validation_split": 0.1,
