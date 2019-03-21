@@ -3,9 +3,10 @@ from activation import *
 from culprit import *
 import glob
 from scipy.special import softmax
-from sklearn.metrics import pairwise_distances
+from sklearn.metrics import pairwise_distances, paired_distances, mutual_info_score, log_loss
 import json
 from model.metric import one_hot
+from scipy.stats import pearsonr
 
 class Uncertainty():
     '''
@@ -54,7 +55,7 @@ class Uncertainty():
         self.query_actv = self.flatten_actv_map(self.query_actv_map, mode = 'max') # flatten the activation map
         assert np.isnan(self.query_actv).sum() == 0, '!!! query flatten activation contains Nan !!!'
         # get genralization error as groung-truth for experiment
-        self.error = self.get_generalize_error(self.query_gt, self.query_pred)
+#         self.error = self.get_generalize_error(self.query_gt, self.query_pred)
         
         # get culprit matrix
         saved_val_path = experiment_saved_path + '/val_actv/'
@@ -122,6 +123,9 @@ class Uncertainty():
         print('*** Flattened actv vector shape is {}.'.format(actv_mtx.shape))
         return actv_mtx
     
+    def get_actv_shape(self):
+        return self.query_shape()
+    
     def get_culprit_matrix(self, method):
         '''
         generate culprit matrix from the saved actv, gt, pred
@@ -129,7 +133,9 @@ class Uncertainty():
         return self.clpt.get_culprit_matrix(method)
 
     
-        
+    def get_query_gt_pred(self):
+        return self.query_gt, self.query_pred
+    
     def get_generalize_error(self, gt, pred):
         '''
         for experiment results. get the difference between output prob as the generalization error. 
@@ -142,6 +148,78 @@ class Uncertainty():
         assert one_hot_gt.shape == prob.shape, '!!! one_hot_gt and prob are not the same shape !!!'
         return np.absolute(one_hot_gt - prob)
 
+    def get_generalize_error_ce(self, gt, pred):
+        '''
+        Input:
+            - gt: 1d array indicating the gt class label
+            - pred: 2d array of (# of data, # of class) raw output without softmax function
+        Method:
+        compute the distance between pred and gt using cross-entropy loss
+        for multi-class, 
+        Adapt from: https://github.com/scikit-learn/scikit-learn/blob/7b136e9/sklearn/metrics/classification.py#L1699
+        since original is the sum of all class, here we want indiviudual class error
+        '''
+        y_pred = softmax(pred, axis = 1)
+        y_pred = check_array(y_pred, ensure_2d=False)
+        check_consistent_length(y_pred, y_true, sample_weight)
+
+        lb = LabelBinarizer()
+
+        if labels is not None:
+            lb.fit(labels)
+        else:
+            lb.fit(y_true)
+
+        if len(lb.classes_) == 1:
+            if labels is None:
+                raise ValueError('y_true contains only one label ({0}). Please '
+                                 'provide the true labels explicitly through the '
+                                 'labels argument.'.format(lb.classes_[0]))
+            else:
+                raise ValueError('The labels array needs to contain at least two '
+                                 'labels for log_loss, '
+                                 'got {0}.'.format(lb.classes_))
+
+        transformed_labels = lb.transform(y_true)
+
+        if transformed_labels.shape[1] == 1:
+            transformed_labels = np.append(1 - transformed_labels,
+                                           transformed_labels, axis=1)
+
+        # Clipping
+        y_pred = np.clip(y_pred, eps, 1 - eps)
+
+        # If y_pred is of single dimension, assume y_true to be binary
+        # and then check.
+        if y_pred.ndim == 1:
+            y_pred = y_pred[:, np.newaxis]
+        if y_pred.shape[1] == 1:
+            y_pred = np.append(1 - y_pred, y_pred, axis=1)
+
+        # Check if dimensions are consistent.
+        transformed_labels = check_array(transformed_labels)
+        if len(lb.classes_) != y_pred.shape[1]:
+            if labels is None:
+                raise ValueError("y_true and y_pred contain different number of "
+                                 "classes {0}, {1}. Please provide the true "
+                                 "labels explicitly through the labels argument. "
+                                 "Classes found in "
+                                 "y_true: {2}".format(transformed_labels.shape[1],
+                                                      y_pred.shape[1],
+                                                      lb.classes_))
+            else:
+                raise ValueError('The number of classes in labels is different '
+                                 'from that in y_pred. Classes found in '
+                                 'labels: {0}'.format(lb.classes_))
+
+        # Renormalize
+        y_pred /= y_pred.sum(axis=1)[:, np.newaxis]
+        loss = -(transformed_labels * np.log(y_pred)).sum(axis=1)
+
+        return loss
+        
+
+    
 #     def sim_cosine(self, vec1, vec2):
 #         '''
 #         cosine similairty for two given vector with the same length.
@@ -149,19 +227,18 @@ class Uncertainty():
 #         sim = np.dot(vec1, vec2)
 #         return sim
     
-    def sim_pearson(self, vec1, vec2):
-        '''
-        pearson r correlation for two given vector with the same length.
-        '''
-        # todo
-        return
+#     def sim_pearson(self, vec1, vec2):
+#         '''
+#         pearson r correlation for two given vector with the same length.
+#         '''
+#         # todo
+#         return
 
     def sim_mutual_info(self, vec1, vec2):
         '''
         mutual information similarity of two vectors of the same lenght, but on different scale
         '''
-        # todo
-        return
+        return mutual_info_score(vec1, vec2)
 
 #     def get_uncertain_score(self, culprit_vec, query_actv_vec, method = 'pearson'):
 #         '''
@@ -192,7 +269,13 @@ class Uncertainty():
         aggregate the uncertainty score for each class, to be a uncertainty vector for the data point.
         the uncertain_matrix is simply the stack of uncertain vector for multiple datapoints.
         '''
-        uncertain_matrix = pairwise_distances(actv_mtx, culprit_mtx, metric = sim_method)
+        
+        sim_methods = {'mi': self.sim_mutual_info} 
+        if sim_method in sim_methods:
+            sim_mthd = sim_methods[sim_method]
+        else:
+            sim_mthd = sim_method
+        uncertain_matrix = pairwise_distances(actv_mtx, culprit_mtx, metric = sim_mthd)
 #        for query_actv_vec in actv_mtx:
 #            # process datapoints row-wise in the query data actv_mtx
 #            uncertain_vector = []
@@ -204,7 +287,7 @@ class Uncertainty():
         return uncertain_matrix
         
 
-    def compare_gt_error(self, uncertain_matrix):
+    def compare_gt_error(self, uncertain_matrix, gt):
         '''
         Input:
             - self.error: a 2D array of (#of data, # of class)
@@ -216,8 +299,8 @@ class Uncertainty():
                 the vector is the aggregete of the datapoints in the query dataset.
         '''
         assert uncertain_matrix.shape == self.error.shape, '!!! uncertain_matrix and self.error are not in the same shape !!!'
-        correlation_vec = get_pearson(uncertain_matrix, self.error)
-        return correlation_vec
+        corr = paired_distances(uncertain_matrix, gt, metric = pearsonr) 
+        return corr
         
 
         
@@ -229,17 +312,17 @@ class Uncertainty():
         rand_mtx = np.random.normal(mean, sigma, culprit_mtx.shape)
         return rand_mtx
 
-    def layer_specific_uncertainty(self):
-        '''
-        pick up some layer which has the strong indication of uncertainty
-        '''
-        # todo self.map_shape
-        return
+#     def layer_specific_uncertainty(self):
+#         '''
+#         pick up some layer which has the strong indication of uncertainty
+#         '''
+#         # todo self.map_shape
+#         return
         
         
-    def run_experiment(self, method = 'select', sim_method = 'cosine'):
-        '''
-        Experiment running pipeline for one single culprit method
-        '''
-        clpt_mtx = self.get_culprit_matrix(method)
-        uncty_mtx = self.get_uncertain_matrix(clpt_mtx, self.query_actv, sim_method)        
+#     def run_experiment(self, method = 'select', sim_method = 'cosine'):
+#         '''
+#         Experiment running pipeline for one single culprit method
+#         '''
+#         clpt_mtx = self.get_culprit_matrix(method)
+#         uncty_mtx = self.get_uncertain_matrix(clpt_mtx, self.query_actv, sim_method)        
