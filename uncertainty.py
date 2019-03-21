@@ -3,7 +3,7 @@ from activation import *
 from culprit import *
 import glob
 from scipy.special import softmax
-from sklearn.metrics import pairwise_distances, paired_distances, mutual_info_score, log_loss
+from sklearn.metrics import pairwise_distances, pairwise, mutual_info_score, log_loss
 import json
 from model.metric import one_hot
 from scipy.stats import pearsonr
@@ -124,7 +124,7 @@ class Uncertainty():
         return actv_mtx
     
     def get_actv_shape(self):
-        return self.query_shape()
+        return self.query_shape
     
     def get_culprit_matrix(self, method):
         '''
@@ -299,7 +299,7 @@ class Uncertainty():
                 the vector is the aggregete of the datapoints in the query dataset.
         '''
         assert uncertain_matrix.shape == self.error.shape, '!!! uncertain_matrix and self.error are not in the same shape !!!'
-        corr = paired_distances(uncertain_matrix, gt, metric = pearsonr) 
+        corr = pairwise.paired_distances(uncertain_matrix, gt, metric = pearsonr) 
         return corr
         
 
