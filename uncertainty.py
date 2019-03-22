@@ -31,7 +31,7 @@ class Uncertainty(BaseActvMap):
             
     '''
     
-    def __init__(self, experiment_saved_path, model_path = 'skinmodel/checkpoint.pth', config_querydata = 'config_skin_alexnet_query.json', config_valdata = 'config_skin_alexnet_val.json'):
+    def __init__(self, experiment_saved_path, flatten_mode, model_path = 'skinmodel/checkpoint.pth', config_querydata = 'config_skin_alexnet_query.json', config_valdata = 'config_skin_alexnet_val.json'):
         '''
         load model activation for query and val dataset
         '''
@@ -48,12 +48,12 @@ class Uncertainty(BaseActvMap):
             self.query_actv_map = query_actv.get_activation()
             self.query_shape = query_actv.get_map_shape()
         else:
-            self.query_actv_map, self.query_gt, self.query_pred, self.query_shape = self.load_pkl(saved_query_path)
+            self.query_actv_map, self.query_gt, self.query_pred, self.query_shape = super().load_pkl(saved_query_path)
         
         # prepare the query data for further processing
         self.query_gt = self.query_gt.numpy()
         self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
-        self.query_actv = self.flatten_actv_map(self.query_actv_map, mode = 'max') # flatten the activation map
+        self.query_actv = super().flatten_actv_map(self.query_actv_map, flatten_mode) # flatten the activation map
         assert np.isnan(self.query_actv).sum() == 0, '!!! query flatten activation contains Nan !!!'
         # get genralization error as groung-truth for experiment
 #         self.error = self.get_generalize_error(self.query_gt, self.query_pred)
@@ -67,7 +67,7 @@ class Uncertainty(BaseActvMap):
             val_actv.extract()
             val_actv.save_data(saved_val_path)
         # instantiate culprit instance
-        self.clpt = CulpritNeuronScore(saved_val_path) 
+        self.clpt = CulpritNeuronScore(saved_val_path, flatten_mode) 
         # culprit methods dictionary
         self.culprit_methods = \
         {'freq': self.clpt.culprit_freq, 
@@ -95,34 +95,34 @@ class Uncertainty(BaseActvMap):
 #         return actv_map, gt, pred_prob, map_shape
 
     
-    def flatten_actv_map(self, actv_map, mode = 'mean'):
-        '''
-        Input:
-            - actv_map, a dict of {layer idx: activation map for that layer of shape (datapoints, activations) - FC layer, or (datapoints, 3D activation maps) - conv}
-        Output: 
-            - actv_mtx, of shape (datapoints, neurons)
-        Method:
-            1. flatten the 2D HxW activation map of one channel/unit/neuron to be a 1D scalar. 
-                mode: average, max, median
-            2. aggregate the neurons/channels at each layer to be single activation vector.
+#     def flatten_actv_map(self, actv_map, mode = 'mean'):
+#         '''
+#         Input:
+#             - actv_map, a dict of {layer idx: activation map for that layer of shape (datapoints, activations) - FC layer, or (datapoints, 3D activation maps) - conv}
+#         Output: 
+#             - actv_mtx, of shape (datapoints, neurons)
+#         Method:
+#             1. flatten the 2D HxW activation map of one channel/unit/neuron to be a 1D scalar. 
+#                 mode: average, max, median
+#             2. aggregate the neurons/channels at each layer to be single activation vector.
         
-        '''
-        # flatten activation map
-        mode_dict = {'mean': torch.mean, 'max': torch.max, 'median':torch.median}
-        activation = []
-        for i in range(len(actv_map)):
-            if len(actv_map[i].size()) > 2:
-                actv_map_flattened =  actv_map[i].reshape(actv_map[i].shape[0], actv_map[i].shape[1], -1)
-                if mode == 'max':
-                    convert_map_to_scalar, _ = mode_dict[mode](actv_map_flattened, dim = 2)
-                else:
-                    convert_map_to_scalar = mode_dict[mode](actv_map_flattened, dim = 2)
-                activation.append(convert_map_to_scalar)
-            else:
-                activation.append(actv_map[i])
-        actv_mtx = torch.cat(activation, dim=1)
-        print('*** Flattened actv vector shape is {}.'.format(actv_mtx.shape))
-        return actv_mtx
+#         '''
+#         # flatten activation map
+#         mode_dict = {'mean': torch.mean, 'max': torch.max, 'median':torch.median}
+#         activation = []
+#         for i in range(len(actv_map)):
+#             if len(actv_map[i].size()) > 2:
+#                 actv_map_flattened =  actv_map[i].reshape(actv_map[i].shape[0], actv_map[i].shape[1], -1)
+#                 if mode == 'max':
+#                     convert_map_to_scalar, _ = mode_dict[mode](actv_map_flattened, dim = 2)
+#                 else:
+#                     convert_map_to_scalar = mode_dict[mode](actv_map_flattened, dim = 2)
+#                 activation.append(convert_map_to_scalar)
+#             else:
+#                 activation.append(actv_map[i])
+#         actv_mtx = torch.cat(activation, dim=1)
+#         print('*** Flattened actv vector shape is {}.'.format(actv_mtx.shape))
+#         return actv_mtx
     
     def get_actv_shape(self):
         return self.query_shape

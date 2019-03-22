@@ -29,7 +29,7 @@ class CulpritNeuronScore(BaseActvMap):
     
     '''
     
-    def __init__(self, path):
+    def __init__(self, path, flatten_mode):
         '''
         read pkl file: pred, gt, activation map, and its shape'
         '''
@@ -42,7 +42,7 @@ class CulpritNeuronScore(BaseActvMap):
         self.label = None # label whether this datapoint is classified as correct - 1 / incorrect - 0
         self.get_label()
         # feature: shape (# of data, # of channels/neurons). for conv, 2d activation (dim 3,4) is flattened as a scalar
-        self.feature = super.flatten_actv_map(self.actv_map)
+        self.feature, self.turnout = super().flatten_actv_map(self.actv_map, flatten_mode)
         self.nb_classes = 2
 
 #        self.culprit_score = None
