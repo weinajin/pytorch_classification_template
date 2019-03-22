@@ -13,10 +13,13 @@ from random import shuffle
 import matplotlib.pyplot as plt
 import copy
 
-import pickle
 import operator, functools
 
-class CulpritNeuronScore():
+from activation import *
+from activation_base_class import BaseActvMap
+
+        
+class CulpritNeuronScore(BaseActvMap):
     '''
     Get culprit score by passing validation set, record activation map for each neuron, and the prediction results (right/wrong)
     Generate the culprit score for each neuron, approaches:
@@ -30,44 +33,19 @@ class CulpritNeuronScore():
         '''
         read pkl file: pred, gt, activation map, and its shape'
         '''
+        super().__init__()
         # read original data from file
-        self.gt = None
-        self.pred_prob = None
-        self.actv_map = None
-        self.map_shape = None
-        self.load_pkl(path)
+        self.actv_map, self.gt, self.pred_prob, self.map_shape = super.load_pkl(path)
         
         # compute the label and activation vector
         self.pred_class = None # convert the one-hot prob of pred_prob to a class prediction
         self.label = None # label whether this datapoint is classified as correct - 1 / incorrect - 0
-        self.feature = [] # shape (# of data, # of channels/neurons). for conv, 2d activation (dim 3,4) is flattened as a scalar
-        self.right_actv = None
-        self.wrong_actv = None
         self.get_label()
-        self.get_feature()
+        # feature: shape (# of data, # of channels/neurons). for conv, 2d activation (dim 3,4) is flattened as a scalar
+        self.feature = super.flatten_actv_map(self.actv_map)
         self.nb_classes = 2
 
 #        self.culprit_score = None
-
-    def load_pkl(self, path):
-        '''
-        load pkl files in the folder with the filename: gt, pred, activationMap, map_shape
-        '''
-        with open(path + 'activationMap.pkl', 'rb') as f:
-            self.actv_map = pickle.load(f)
-        with open(path + 'gt.pkl', 'rb') as f:
-            self.gt = pickle.load(f)
-        with open(path + 'pred.pkl', 'rb') as f:
-            self.pred_prob = pickle.load(f)
-        with open(path + 'map_shape.pkl', 'rb') as f:
-            self.map_shape = pickle.load(f)
-
-        # sanity check for data shape
-        assert self.gt.shape[0] == self.pred_prob.shape[0], 'pred and gt do not have the same datapoints, pred {}, gt {}'.format(self.pred_prob.shape, self.gt.shape)
-        for i in range(len(self.map_shape)):
-            assert self.actv_map[i].size()[1:] == self.map_shape[i][1:], 'activation map {} and map shape are not at the same length, activateion map {}, map_shape {}.'.format(i, self.actv_map[i].size(), self.map_shape[i])
-        print('*** actv shape (ignore dim 0 - batch size) is: {} .'.format(self.map_shape))
-        print('*** data loaded ***')
 
 
     def get_label(self):
@@ -79,31 +57,32 @@ class CulpritNeuronScore():
         print('*** label size is {}, right prediction is {}.'.format(self.label.size(), torch.sum(self.label)))
 
 
-    def get_feature(self, mode = 'mean'):
-        '''
-        1. flatten the activation map of one channel to be a scalar, so the shape of flattened 
-        mode: average, max, median
-        2. aggregate the neurons/channels at each layer as a activation vector
-        '''
-        # flatten activation map
-        mode_dict = {'mean': torch.mean, 'max': torch.max, 'median':torch.median}
-        activation = []
-        for i in range(len(self.actv_map)):
-#            print(len(self.actv_map[i].size()))
-            if len(self.actv_map[i].size()) > 2:
-                actv_map_flattened =  self.actv_map[i].reshape(self.actv_map[i].shape[0], self.actv_map[i].shape[1], -1)
-                convert_map_to_scalar = mode_dict[mode](actv_map_flattened, dim = 2)
-                activation.append(convert_map_to_scalar)
-            else:
-                activation.append(self.actv_map[i])
-#            print('len(act), act[i] shape', len(activation), activation[i].shape)
-        self.feature = torch.cat(activation, dim=1)
-        print('*** feature shape is {}.'.format(self.feature.shape))
-        # get the actv group for r/w preditions
-        self.right_actv = self.feature[self.label, :]
-        self.wrong_actv = self.feature[self.label==0, :]
-        print('*** right_actv shape is {}, wrong_actv shape is {}.'.format(self.right_actv.shape, self.wrong_actv.shape)) 
+#     def get_feature(self, mode = 'mean'):
+#         '''
+#         1. flatten the activation map of one channel to be a scalar, so the shape of flattened 
+#         mode: average, max, median
+#         2. aggregate the neurons/channels at each layer as a activation vector
+#         '''
+#         # flatten activation map
+#         mode_dict = {'mean': torch.mean, 'max': torch.max, 'median':torch.median}
+#         activation = []
+#         for i in range(len(self.actv_map)):
+# #            print(len(self.actv_map[i].size()))
+#             if len(self.actv_map[i].size()) > 2:
+#                 actv_map_flattened =  self.actv_map[i].reshape(self.actv_map[i].shape[0], self.actv_map[i].shape[1], -1)
+#                 convert_map_to_scalar = mode_dict[mode](actv_map_flattened, dim = 2)
+#                 activation.append(convert_map_to_scalar)
+#             else:
+#                 activation.append(self.actv_map[i])
+# #            print('len(act), act[i] shape', len(activation), activation[i].shape)
+#         self.feature = torch.cat(activation, dim=1)
+#         print('*** feature shape is {}.'.format(self.feature.shape))
+#         # get the actv group for r/w preditions
+#         self.right_actv = self.feature[self.label, :]
+#         self.wrong_actv = self.feature[self.label==0, :]
+#         print('*** right_actv shape is {}, wrong_actv shape is {}.'.format(self.right_actv.shape, self.wrong_actv.shape)) 
 
+        
     def normalize(self, x):
         '''
         normalize the (# of data, # of feature) columwise
@@ -114,6 +93,7 @@ class CulpritNeuronScore():
         print('*** x of shape {} is normalized column wise. Before normalize, sum of mean and std for each col are: {}, {}. After normalize: {}, {}.'.format(x.shape, x.mean(0).sum(), x.std(0).sum(), x_normed.mean(0).sum(), x_normed.std(0).sum()))
         return x_normed
 
+    
     def culprit_selectivity(self, target_class, normalized = False, absolute = False):
         ''' 
         calculate the culprit vector for a given class, according to the statistics of activation map w.r.t. right/wrong pred.

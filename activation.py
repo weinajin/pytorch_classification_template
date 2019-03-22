@@ -19,7 +19,7 @@ import json
 from torchvision.models import vgg16, alexnet
 # import torchvision
 
-class ExtractActivation():
+class ExtractActivation:
     '''
     extract activation map, and the output and gt.  
     '''
@@ -181,7 +181,7 @@ class ExtractActivation():
             pickle.dump(self.pred.cpu(), output)
         with open(path + 'map_shape.pkl', 'wb') as output:
             pickle.dump(self.map_shape, output)
-        print('*** activation data saved ***')
+        print('*** activation data saved at {}***'.format(path))
 
         
 if __name__ == '__main__':

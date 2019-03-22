@@ -1,14 +1,15 @@
 import numpy as np
-from activation import *
-from culprit import *
 import glob
 from scipy.special import softmax
 from sklearn.metrics import pairwise_distances, pairwise, mutual_info_score, log_loss
 import json
 from model.metric import one_hot
 from scipy.stats import pearsonr
+from activation_base_class import BaseActvMap
+from activation import *
+from culprit import *
 
-class Uncertainty():
+class Uncertainty(BaseActvMap):
     '''
     End-to-end pipeline:
     Input:  
@@ -73,25 +74,25 @@ class Uncertainty():
          'select': self.clpt.culprit_selectivity, 
          'stat': self.clpt.culprit_stat}
 
-    def load_pkl(self, path):
-        '''
-        load pkl files in the folder with the filename: gt, pred, activationMap, map_shape
-        '''
-        with open(path + 'activationMap.pkl', 'rb') as f:
-            actv_map = pickle.load(f)
-        with open(path + 'gt.pkl', 'rb') as f:
-            gt = pickle.load(f)
-        with open(path + 'pred.pkl', 'rb') as f:
-            pred_prob = pickle.load(f)
-        with open(path + 'map_shape.pkl', 'rb') as f:
-            map_shape = pickle.load(f)
-        # sanity check for data shape
-        assert gt.shape[0] == pred_prob.shape[0], 'pred and gt do not have the same datapoints, pred {}, gt {}'.format(pred_prob.shape, gt.shape)
-        for i in range(len(map_shape)):
-            assert actv_map[i].size()[1:] == map_shape[i][1:], 'activation map {} and map shape are not at the same length, activateion map {}, map_shape {}.'.format(i, actv_map[i].size(), map_shape[i])
-        print('*** actv shape (ignore dim 0 - batch size) is: {} .'.format(map_shape))
-        print('*** data loaded ***')
-        return actv_map, gt, pred_prob, map_shape
+#     def load_pkl(self, path):
+#         '''
+#         load pkl files in the folder with the filename: gt, pred, activationMap, map_shape
+#         '''
+#         with open(path + 'activationMap.pkl', 'rb') as f:
+#             actv_map = pickle.load(f)
+#         with open(path + 'gt.pkl', 'rb') as f:
+#             gt = pickle.load(f)
+#         with open(path + 'pred.pkl', 'rb') as f:
+#             pred_prob = pickle.load(f)
+#         with open(path + 'map_shape.pkl', 'rb') as f:
+#             map_shape = pickle.load(f)
+#         # sanity check for data shape
+#         assert gt.shape[0] == pred_prob.shape[0], 'pred and gt do not have the same datapoints, pred {}, gt {}'.format(pred_prob.shape, gt.shape)
+#         for i in range(len(map_shape)):
+#             assert actv_map[i].size()[1:] == map_shape[i][1:], 'activation map {} and map shape are not at the same length, activateion map {}, map_shape {}.'.format(i, actv_map[i].size(), map_shape[i])
+#         print('*** actv shape (ignore dim 0 - batch size) is: {} .'.format(map_shape))
+#         print('*** data loaded ***')
+#         return actv_map, gt, pred_prob, map_shape
 
     
     def flatten_actv_map(self, actv_map, mode = 'mean'):
