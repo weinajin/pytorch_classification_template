@@ -68,19 +68,27 @@ def run_experiment(experiment_variables):
     nb_neuron_layer = dict()
     for i, tch in enumerate(actv_map_shape):
         nb_neuron_layer[i] = list(tch)[1:]
+    nb_neuron_list = [i[0] for i in nb_neuron_layer.values()]
+    layer_idx = []
+    for i in range(len(nb_neuron_list)):
+        layer_idx.append((np.cumsum(nb_neuron_list)[i]-nb_neuron_list[i], np.cumsum(nb_neuron_list)[i]))
+    print(layer_idx, nb_neuron_layer)
     # 1. correlation for overall uncty_mtx with error
-    overall_corr = pearsonr(uncty_mtx, error)
-    exp_results['overall_corr'] = overall_corr
-    # 2. correlation for class-specific uncty_mtx with error
-    
-    # 3. correlation for class-specific, and layer-specific 
-    
-    # calculate the correlation between gt and proposed uncertainty
-    
-
-        
-
-    
+    nb_class = error.shape[1]
+    exp_results['overall'] = pearsonr(uncty_mtx.reshape(-1), error.reshape(-1))
+    exp_results['overall_no_logit'] = pearsonr(uncty_mtx[:-nb_class, :].reshape(-1), error[:-nb_class, :].reshape(-1))
+    nb_fc = nb_neuron_list[-1] + nb_neuron_list[-2] + nb_neuron_list[-3]
+    exp_results['overall_no_fc'] = pearsonr(uncty_mtx[:-nb_fc, :].reshape(-1), error[:-nb_fc, :].reshape(-1))
+    # 2. correlation for class-specific, and layer-specific 
+    for i in range(nb_class):
+        for layer in range(len(nb_neuron_layer)):
+            exp_results['layer_{}_class_{}'.format(layer, i)] = pearsonr(\
+                                                                         error[layer_idx[layer][0]: layer_idx[layer][1],i],\
+                                                                         uncty_mtx[layer_idx[layer][0]: layer_idx[layer][1],i])
+        exp_results['class_{}'.format(i)] = pearsonr(error[:,i], uncty_mtx[:,i])
+        exp_results['no_logit_class_{}'.format(i)] = pearsonr(uncty_mtx[:-nb_class, i], error[:-nb_class, i])
+        exp_results['no_fc_class_{}'.format(i)] = pearsonr(uncty_mtx[:-nb_fc, i], error[:-nb_fc, i])
+     
 
     # --- save data for further vis ---    
     # timestamp and folder for save experiment results 
@@ -108,11 +116,18 @@ def run_experiment(experiment_variables):
     with open(subdir+"/"+"gt_error.csv","w+") as my_csv:
         csvWriter = csv.writer(my_csv,delimiter=',')
         csvWriter.writerows(error)
+    with open(subdir+"/"+"gt.csv","w+") as my_csv:
+        csvWriter = csv.writer(my_csv,delimiter=',')
+        csvWriter.writerows(gt)
+    with open(subdir+"/"+"pred.csv","w+") as my_csv:
+        csvWriter = csv.writer(my_csv,delimiter=',')
+        csvWriter.writerows(pred)
     # save the experiment variables and results
     with open(subdir+"/" + '/exp_variables.json', 'w') as js:
         json.dump(experiment_variables, js)
     with open(subdir+"/" + '/exp_results.json', 'w') as js:
         json.dump(exp_results, js)
+    
     print('*** experiment data saved at {} ***'.format(subdir))
     return uncty, subdir
 
