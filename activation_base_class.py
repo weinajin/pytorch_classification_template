@@ -37,7 +37,7 @@ class BaseActvMap:
         return actv_map, gt, pred_prob, map_shape
 
         
-    def flatten_actv_map(self, actv_map, mode = 'mean'):
+    def flatten_actv_map(self, actv_map, mode):
         '''
         Input:
             - actv_map, a dict of {layer idx: activation map for that layer of shape (datapoints, activations) - FC layer, or (datapoints, 3D activation maps) - conv}
@@ -54,7 +54,7 @@ class BaseActvMap:
         activation = []
         turnouts = [] # appending variable for layerwise turnout
         # i corresponds to layer i in actv_map, of tensor d greater than 2. Disregards FC layers etc.
-        for i in range(len(self.actv_map)):
+        for i in range(len(actv_map)):
             # conv layer case
             if len(actv_map[i].size()) > 2:
                 actv_map_flattened =  actv_map[i].reshape(actv_map[i].shape[0], actv_map[i].shape[1], -1)
@@ -96,7 +96,7 @@ class BaseActvMap:
 #         self.right_actv_weighted_median = self.feature_weighted_median[self.label, :]
 #         self.wrong_actv_weighted_median = self.feature_weighted_median[self.label==0, :]
 #         print('*** right_actv shape is {}|{}, wrong_actv shape is {}|{}.'.format(self.right_actv.shape, self.right_actv_weigh    ted_median.shape, self.wrong_actv.shape, self.wrong_actv_weighted_median.shape)) 
-        return feature, turnout
+        return feature.numpy(), turnout.numpy() # convert to numpy type before return
         
         
         

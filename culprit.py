@@ -35,7 +35,7 @@ class CulpritNeuronScore(BaseActvMap):
         '''
         super().__init__()
         # read original data from file
-        self.actv_map, self.gt, self.pred_prob, self.map_shape = super.load_pkl(path)
+        self.actv_map, self.gt, self.pred_prob, self.map_shape = super().load_pkl(path)
         
         # compute the label and activation vector
         self.pred_class = None # convert the one-hot prob of pred_prob to a class prediction
@@ -101,7 +101,7 @@ class CulpritNeuronScore(BaseActvMap):
         normalized = True, normalized each neuron's activation by dividing the activations across the dataset, before calculating the ratio.
         '''
         # get normalized activations
-        features_clone = self.feature.clone()
+        features_clone = self.feature.copy()
         # negative exist in the last logits. the rest values are non-negative
 #         print(features_clone[:, :-2].min(), features_clone[:, :-2].max(), features_clone.shape)
         if normalized:
@@ -113,8 +113,8 @@ class CulpritNeuronScore(BaseActvMap):
         right_actv = cls_feat[cls_label==target_class, :]
         wrong_actv = cls_feat[cls_label!=target_class, :]        
         # for each neuron, get the mean activation across the full wrong/right datapoints 
-        r_mean = right_actv.mean(0).numpy()
-        w_mean = wrong_actv.mean(0).numpy()
+        r_mean = right_actv.mean(0)#.numpy()
+        w_mean = wrong_actv.mean(0)#.numpy()
         # activation distribution, median = min = 0, max ~= 2.8
 #         print(right_actv[:, :-2].min(), right_actv[:, :-2].median(), wrong_actv[:, :-2].min(), wrong_actv[:, :-2].median())
 #         print(r_mean[:-2].min(), r_mean[:-2].max(), w_mean[:-2].min(), w_mean[:-2].max())

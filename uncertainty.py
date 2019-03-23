@@ -35,7 +35,7 @@ class Uncertainty(BaseActvMap):
         '''
         load model activation for query and val dataset
         '''
-        # get query dataset actv, gt, pred 
+        # get query dataset actv, gt, pred
         saved_query_path = experiment_saved_path + '/query_actv/'
         if len(glob.glob(saved_query_path+'*.pkl')) != 4:
             # if there is no saved query actv
@@ -51,10 +51,11 @@ class Uncertainty(BaseActvMap):
             self.query_actv_map, self.query_gt, self.query_pred, self.query_shape = super().load_pkl(saved_query_path)
         
         # prepare the query data for further processing
-        self.query_gt = self.query_gt.numpy()
+        self.query_gt = (self.query_gt.cpu()).numpy()
         self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
-        self.query_actv = super().flatten_actv_map(self.query_actv_map, flatten_mode) # flatten the activation map
-        assert np.isnan(self.query_actv).sum() == 0, '!!! query flatten activation contains Nan !!!'
+        self.query_actv, self.turnout = super().flatten_actv_map(self.query_actv_map, flatten_mode) # flatten the activation map NOTE: that flatten returns 2 objects
+#         print(type(self.query_actv))
+        assert np.isnan(self.query_actv).sum() == 0, '[uncertainty.init] !!! query flatten activation contains Nan !!!'
         # get genralization error as groung-truth for experiment
 #         self.error = self.get_generalize_error(self.query_gt, self.query_pred)
         
@@ -126,6 +127,8 @@ class Uncertainty(BaseActvMap):
     
     def get_actv_shape(self):
         return self.query_shape
+    def get_query_actv(self):
+        return self.query_actv
     
     def get_culprit_matrix(self, method):
         '''
