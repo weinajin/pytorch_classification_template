@@ -139,23 +139,23 @@ class CulpritNeuronScore(BaseActvMap):
         calculate the culprit vector for a given class.
         count the time of neuron firing when prediction goes wrong. fire is when the activation above mean
         '''
-        # todo, class specific
-        features = self.feature.clone()
-        if normalized:
-            features = self.normalize(features) 
-        mean = features.mean(dim = 0, keepdim = True)
-        fire = features > mean
-        right_fire = fire[self.label==1, :]
-        wrong_fire = fire[self.label==0, :]
-        # compute average wrong fire above right fire for each neuron
-        right_fire_mean = right_fire.sum(dim = 0).numpy() / float(right_fire.numpy().shape[0])
-        wrong_fire_mean = wrong_fire.sum(dim = 0).numpy() / float(wrong_fire.numpy().shape[0])
-#        print(right_fire_mean)
-#        print(wrong_fire_mean)
-        # todo, bug in freq, all zeors
-        freq = wrong_fire_mean / right_fire_mean
-#        print(freq)
-        return freq
+#         # todo, class specific
+#         features = self.feature.clone()
+#         if normalized:
+#             features = self.normalize(features) 
+#         mean = features.mean(dim = 0, keepdim = True)
+#         fire = features > mean
+#         right_fire = fire[self.label==1, :]
+#         wrong_fire = fire[self.label==0, :]
+#         # compute average wrong fire above right fire for each neuron
+#         right_fire_mean = right_fire.sum(dim = 0).numpy() / float(right_fire.numpy().shape[0])
+#         wrong_fire_mean = wrong_fire.sum(dim = 0).numpy() / float(wrong_fire.numpy().shape[0])
+# #        print(right_fire_mean)
+# #        print(wrong_fire_mean)
+#         # todo, bug in freq, all zeors
+#         freq = wrong_fire_mean / right_fire_mean
+# #        print(freq)
+        return #freq
 
 
     

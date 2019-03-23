@@ -9,7 +9,7 @@ import csv
 import os
 
 # set the experiment variables
-experiment_variables = {'flatten_mode': 'mean',  # actv map flatten mode: mean, median, lognormal, max
+experiment_variables = {'flatten_mode': 'lognormal',  # actv map flatten mode: mean, median, lognormal, max
                         'clpt_method': 'select', 
                         'sim_method': 'cosine', # actv_mtx and clpt_mtx similarity method
                         'gt_error_method': 'l1',  # compute the groud truth uncertainty (generalization error)
@@ -63,7 +63,7 @@ def run_experiment(experiment_variables):
     experiment_saved_subfolder =  experiment_variables['experiment_name'] + '_' + timestamp
 
     error = gt_error_methods[gt_error_method](gt, pred)
-    corr = uncty.
+#     corr = uncty.
     # create subfolder for results saving
     subdir = experiment_saved_path + '/' + experiment_saved_subfolder
     if not os.path.exists(subdir):
