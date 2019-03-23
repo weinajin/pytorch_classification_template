@@ -13,7 +13,7 @@ experiment_variables = {'flatten_mode': 'mean',  # actv map flatten mode: mean, 
                         'clpt_method': 'select', 
                         'sim_method': 'cosine', # actv_mtx and clpt_mtx similarity method
                         'gt_error_method': 'l1',  # compute the groud truth uncertainty (generalization error)
-                        'experiment_saved_path': './saved',
+                        'experiment_saved_path': 'saved',
                         'model_path': 'skinmodel/checkpoint.pth', 
                         'val': 'config_skin_alexnet_val.json', # dataset path
                         'query': 'config_skin_alexnet_query.json',
@@ -40,7 +40,7 @@ def run_experiment(experiment_variables):
     
 
     # 1. load data: in Uncertainty class init. Instantiate an Uncertainty instance
-    uncty = Uncertainty(experiment_saved_path, model_path)
+    uncty = Uncertainty(experiment_saved_path, 'lognormal', model_path) # 2nd arg, flatten map method: mean, lognormal.. etc
     gt_error_methods = {'l1': uncty.get_generalize_error, 'ce': uncty.get_generalize_error_ce }
     gt, pred = uncty.get_query_gt_pred()
     
@@ -63,7 +63,7 @@ def run_experiment(experiment_variables):
     experiment_saved_subfolder =  experiment_variables['experiment_name'] + '_' + timestamp
 
     error = gt_error_methods[gt_error_method](gt, pred)
-    corr = uncty.
+    # corr = uncty.
     # create subfolder for results saving
     subdir = experiment_saved_path + '/' + experiment_saved_subfolder
     if not os.path.exists(subdir):

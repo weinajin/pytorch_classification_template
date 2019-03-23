@@ -37,7 +37,7 @@ class BaseActvMap:
         return actv_map, gt, pred_prob, map_shape
 
         
-    def flatten_actv_map(self, actv_map, mode = 'mean'):
+    def flatten_actv_map(self, actv_map, mode):
         '''
         Input:
             - actv_map, a dict of {layer idx: activation map for that layer of shape (datapoints, activations) - FC layer, or (datapoints, 3D activation maps) - conv}
@@ -54,7 +54,7 @@ class BaseActvMap:
         activation = []
         turnouts = [] # appending variable for layerwise turnout
         # i corresponds to layer i in actv_map, of tensor d greater than 2. Disregards FC layers etc.
-        for i in range(len(self.actv_map)):
+        for i in range(len(actv_map)):
             # conv layer case
             if len(actv_map[i].size()) > 2:
                 actv_map_flattened =  actv_map[i].reshape(actv_map[i].shape[0], actv_map[i].shape[1], -1)
