@@ -34,7 +34,7 @@ class BaseActvMap:
             assert actv_map[i].size()[1:] == map_shape[i][1:], 'activation map {} and map shape are not at the same length, activateion map {}, map_shape {}.'.format(i, actv_map[i].size(), map_shape[i])
         print('*** actv shape (ignore dim 0 - batch size) is: {} .'.format(map_shape))
         print('*** {} data loaded ***'.format(path))
-        return actv_map, gt, pred_prob, map_shape
+        return actv_map, gt.numpy(), pred_prob.numpy(), map_shape
 
         
     def flatten_actv_map(self, actv_map, mode):
@@ -42,7 +42,7 @@ class BaseActvMap:
         Input:
             - actv_map, a dict of {layer idx: activation map for that layer of shape (datapoints, activations) - FC layer, or (datapoints, 3D activation maps) - conv}
         Output: 
-            - actv_mtx, of shape (datapoints, neurons)
+            - feature, turnout, of shape (datapoints, neurons). numpy object
         Method:
             1. flatten the 2D HxW activation map of one channel/unit/neuron to be a 1D scalar. 
                 mode: average, max, median

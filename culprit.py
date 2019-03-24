@@ -18,7 +18,8 @@ import operator, functools
 from activation import *
 from activation_base_class import BaseActvMap
 
-        
+import pdb
+
 class CulpritNeuronScore(BaseActvMap):
     '''
     Get culprit score by passing validation set, record activation map for each neuron, and the prediction results (right/wrong)
@@ -52,9 +53,9 @@ class CulpritNeuronScore(BaseActvMap):
         '''
         self.pred_correct is the label, predict correct - 1, incorrect - 0.
         '''
-        self.pred_class = torch.argmax(self.pred_prob, dim = 1)
-        self.label = self.pred_class == self.gt
-        print('*** label size is {}, right prediction is {}.'.format(self.label.size(), torch.sum(self.label)))
+        self.pred_class = np.argmax(self.pred_prob, axis = 1)
+        self.label = (self.pred_class == self.gt)
+        print('*** label size is {}, right prediction is {}.'.format(self.label.shape, np.sum(self.label)))
 
 
 #     def get_feature(self, mode = 'mean'):
@@ -100,18 +101,23 @@ class CulpritNeuronScore(BaseActvMap):
         for each neuron, calculate its mean ratio for R/W activation group. 
         normalized = True, normalized each neuron's activation by dividing the activations across the dataset, before calculating the ratio.
         '''
-        # get normalized activations
-        features_clone = self.feature.copy()
+#         pdb.set_trace()
+        
+        features_clone = self.feature.copy() # shape (datapoints, neurons)
         # negative exist in the last logits. the rest values are non-negative
 #         print(features_clone[:, :-2].min(), features_clone[:, :-2].max(), features_clone.shape)
+        # get normalized activations
         if normalized:
             features_clone = self.normalize(features_clone)
-        cls_feat = features_clone[self.gt == target_class]
-        cls_label = self.pred_class[self.gt == target_class]
+#         cls_feat = features_clone[self.gt == target_class, :] # select the data with true target
+#         cls_label = self.pred_class[self.gt == target_class] # select the corresponding label with true target
 
         # group activation according to the predict is right/wrong
-        right_actv = cls_feat[cls_label==target_class, :]
-        wrong_actv = cls_feat[cls_label!=target_class, :]        
+#         right_actv = cls_feat[cls_label==target_class, :]
+#         wrong_actv = cls_feat[cls_label!=target_class, :]     
+        right_actv = features_clone[np.all([(self.gt==target_class), (self.pred_class ==target_class)], axis = 0), :]
+        wrong_actv = features_clone[np.all([(self.gt==target_class), (self.pred_class !=target_class)], axis = 0), :]
+        
         # for each neuron, get the mean activation across the full wrong/right datapoints 
         r_mean = right_actv.mean(0)#.numpy()
         w_mean = wrong_actv.mean(0)#.numpy()
@@ -126,12 +132,13 @@ class CulpritNeuronScore(BaseActvMap):
         diff_mean = w_mean - r_mean
         
 #         print(sum_mean.shape, sum_mean[:-2].mean(), sum_mean[:-2].min(), sum_mean[:-2].max(), (sum_mean == 0.0).sum())
-        selectivity = np.where(np.abs(sum_mean) >1e-10, diff_mean/sum_mean, sum_mean) 
+        selectivity = np.where(np.absolute(sum_mean) >1e-5, diff_mean/sum_mean, sum_mean) 
 #         log_selectivity = np.log(w_mean - r_mean ) / np.log(w_mean + r_mean) 
         if absolute:
             selectivity = selectivity.abs()
 #         print((selectivity == 0.0).sum(), np.array(selectivity).min(), selectivity.max())
         assert np.isnan(selectivity).sum() ==0, '!!! Nan value exists in culprit selectivity !!!'
+        print('[select = 0]', (selectivity == 0.0).sum())
         return selectivity
 
     def culprit_freq(self, target_class, normalized = True):
@@ -212,9 +219,9 @@ class CulpritNeuronScore(BaseActvMap):
         # return neuron_seq, score.numpy()
         return neuron_seq, score
     
-if __name__ == '__main__':
-   clpt = CulpritNeuronScore('./saved/') 
-   score = clpt.culprit_freq()
-   clpt.get_rank(score)
+# if __name__ == '__main__':
+#    clpt = CulpritNeuronScore('./saved/') 
+#    score = clpt.culprit_freq()
+#    clpt.get_rank(score)
 #   clpt.culprit_ratio()
 

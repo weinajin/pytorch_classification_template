@@ -18,7 +18,7 @@ experiment_variables = {'flatten_mode': 'mean',  # actv map flatten mode: mean, 
                         'model_path': 'skinmodel/checkpoint.pth', 
                         'val': 'config_skin_alexnet_val.json', # dataset path
                         'query': 'config_skin_alexnet_query.json',
-                        'experiment_name': 'testrun'
+                        'experiment_name': 'vis'
                        }
 
 
@@ -72,7 +72,6 @@ def run_experiment(experiment_variables):
     layer_idx = []
     for i in range(len(nb_neuron_list)):
         layer_idx.append((np.cumsum(nb_neuron_list)[i]-nb_neuron_list[i], np.cumsum(nb_neuron_list)[i]))
-    print(layer_idx, nb_neuron_layer)
     # 1. correlation for overall uncty_mtx with error
     nb_class = error.shape[1]
     exp_results['overall'] = pearsonr(uncty_mtx.reshape(-1), error.reshape(-1))
@@ -112,13 +111,13 @@ def run_experiment(experiment_variables):
         csvWriter = csv.writer(my_csv,delimiter=',')
         csvWriter.writerows(clpt_mtx)    
     with open(subdir + '/' + 'nb_neuron_layer.json', 'w') as js:
-        json.dum(nb_neuron_layer, js)
+        json.dump(nb_neuron_layer, js)
     with open(subdir+"/"+"gt_error.csv","w+") as my_csv:
         csvWriter = csv.writer(my_csv,delimiter=',')
         csvWriter.writerows(error)
     with open(subdir+"/"+"gt.csv","w+") as my_csv:
         csvWriter = csv.writer(my_csv,delimiter=',')
-        csvWriter.writerows(gt)
+        csvWriter.writerow(gt)
     with open(subdir+"/"+"pred.csv","w+") as my_csv:
         csvWriter = csv.writer(my_csv,delimiter=',')
         csvWriter.writerows(pred)
@@ -135,5 +134,5 @@ def visualize(path):
     return
                                
 if __name__ == '__main__':
-    run_experiment(experiment_variables)
-                               
+    uncty, subdir = run_experiment(experiment_variables)
+    visualize(subdir)                           

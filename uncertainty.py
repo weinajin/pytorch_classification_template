@@ -43,16 +43,16 @@ class Uncertainty(BaseActvMap):
             query_actv = ExtractActivation(config_query, model_path) 
             query_actv.extract()
             query_actv.save_data(saved_query_path)
-            self.query_gt = query_actv.get_gt()
-            self.query_pred = query_actv.get_predict()
+            self.query_gt = query_actv.get_gt().numpy()
+            self.query_pred = query_actv.get_predict().numpy()
             self.query_actv_map = query_actv.get_activation()
             self.query_shape = query_actv.get_map_shape()
         else:
             self.query_actv_map, self.query_gt, self.query_pred, self.query_shape = super().load_pkl(saved_query_path)
         
         # prepare the query data for further processing
-        self.query_gt = (self.query_gt.cpu()).numpy()
-        self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
+#         self.query_gt = (self.query_gt.cpu()).numpy()
+#         self.query_pred = self.query_pred.numpy() # conver torch tensor to numpy
         self.query_actv, self.turnout = super().flatten_actv_map(self.query_actv_map, flatten_mode) # flatten the activation map NOTE: that flatten returns 2 objects
 #         print(type(self.query_actv))
         assert np.isnan(self.query_actv).sum() == 0, '[uncertainty.init] !!! query flatten activation contains Nan !!!'
@@ -70,10 +70,10 @@ class Uncertainty(BaseActvMap):
         # instantiate culprit instance
         self.clpt = CulpritNeuronScore(saved_val_path, flatten_mode) 
         # culprit methods dictionary
-        self.culprit_methods = \
-        {'freq': self.clpt.culprit_freq, 
-         'select': self.clpt.culprit_selectivity, 
-         'stat': self.clpt.culprit_stat}
+#         self.culprit_methods = \
+#         {'freq': self.clpt.culprit_freq, 
+#          'select': self.clpt.culprit_selectivity, 
+#          'stat': self.clpt.culprit_stat}
 
 #     def load_pkl(self, path):
 #         '''
