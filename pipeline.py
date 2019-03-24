@@ -130,9 +130,46 @@ def run_experiment(experiment_variables):
     print('*** experiment data saved at {} ***'.format(subdir))
     return uncty, subdir
 
-def visualize(path):
-    return
-                               
+def visualize(subdir):
+    # read experiment saved data from subdir
+    bl_uncty_mtx = np.genfromtxt (subdir+"/"+'bl_uncty_mtx.csv', delimiter=",")
+    uncty_mtx = np.genfromtxt (subdir+"/"+'uncty_mtx.csv', delimiter=",")
+    gt_error = np.genfromtxt (subdir+"/"+'gt_error.csv', delimiter=",")
+    nb_cls = gt_error.shape[1]
+    # plot
+    fig = plt.figure(figsize = (20,10))
+    axs = []
+    for i in range(nb_cls):
+        # correlation graph
+        if i >0:
+            ax1 = fig.add_subplot(2,2,1+i, sharey = axs[i-1])
+        else:
+            ax1 = fig.add_subplot(2,2,1+i)
+        ax1.scatter(gt_error[:, i], uncty_mtx[:, i], label = 'Proposed uncertainty score', s = 15)
+        ax1.scatter(gt_error[:, i], bl_uncty_mtx[:, i], label = 'Baseline (random)', s = 15)
+        ax1.set_xlabel('Gt prediction error')
+        ax1.set_ylabel('Proposed uncertainty score')
+        ax1.set_title('Proposed uncertainty score and gt correlation: {:.2f}. Class = {}'\
+                      .format(pearsonr(gt_error[:,i], uncty_mtx[:,i])[0], i))
+        ax1.legend(loc = 'best')
+        
+        # signal alignment graph
+        if i >0:
+            ax2 = fig.add_subplot(2,2,3+i, sharey = axs[i])
+        else:
+            ax2 = fig.add_subplot(2,2,3+i)
+        ax2.plot(uncty_mtx[:, i], label = 'Proposed uncertainty score')
+        ax2.plot(gt_error[:, i], label = 'Gt prediction error')
+        ax2.set_xlabel('Data in query dataset')
+        ax2.set_ylabel('Score')
+        ax2.set_title('Alignment with gt for each corresponding data. Class = {}'.format(i))
+        ax2.legend(loc = 'best')
+        axs.append(ax1)
+        axs.append(ax2)
+#     axs[0].get_shared_y_axes().join(axs[0], axs[2])
+#     axs[1].get_shared_y_axes().join(axs[1], axs[3])
+    fig.savefig(subdir+'/'+'exp_fig.png')
+
 if __name__ == '__main__':
     uncty, subdir = run_experiment(experiment_variables)
     visualize(subdir)                           

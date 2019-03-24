@@ -138,7 +138,7 @@ class CulpritNeuronScore(BaseActvMap):
             selectivity = selectivity.abs()
 #         print((selectivity == 0.0).sum(), np.array(selectivity).min(), selectivity.max())
         assert np.isnan(selectivity).sum() ==0, '!!! Nan value exists in culprit selectivity !!!'
-        print('[select = 0]', (selectivity == 0.0).sum())
+        print('[number of 0 in culprit vector]', (selectivity == 0.0).sum())
         return selectivity
 
     def culprit_freq(self, target_class, normalized = True):
