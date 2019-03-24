@@ -1,1 +1,13 @@
 This pipeline requires some input files pertaining to the validation and query image data. These files can be found in /local-scratch/culprit_neuron/skindata on ts09. So if you want to run this pipeline on your fav server in the lab you'll have to move some files around after you pull this repo. I did not push these files to the github because the images needs to generate the activation maps take up a lot of space. DS March 22 2019.
+
+# for visualization pipeline:
+The pipeline picture is here: https://docs.google.com/presentation/d/1M_3jkdDUvswsIfyMYF3iDbBufdKiKPuePMh35zkXREE/edit?usp=sharing
+assume user has already given a query dataset.
+required files (see the above figure for pipeline details):
+    - Activations of query set: query_actv.csv  (# of query img, # of neuron)
+    - Culprit matrix: clpt_mtx.csv (# of neuron, # of class)
+    - Uncertain matrix: uncty_mtx.csv (# of query image, # of class)
+    - Prediction for the query image: pred.csv (# of query image, # of class)
+ 
+
+
