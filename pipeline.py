@@ -18,7 +18,7 @@ experiment_variables = {'flatten_mode': 'mean',  # actv map flatten mode: mean, 
                         'model_path': 'skinmodel/checkpoint.pth', 
                         'val': 'config_skin_alexnet_val.json', # dataset path
                         'query': 'config_skin_alexnet_query.json',
-                        'experiment_name': 'vis'
+                        'experiment_name': 'pred'
                        }
 
 
@@ -29,6 +29,7 @@ def run_experiment(experiment_variables):
     save the uncertainty_mtx as csv
     
     '''
+    experiment_variables_copy = experiment_variables.copy()
     flatten_mode = experiment_variables['flatten_mode']
     clpt_method = experiment_variables['clpt_method']
     sim_method = experiment_variables['sim_method']
@@ -37,7 +38,7 @@ def run_experiment(experiment_variables):
     model_path = experiment_variables['model_path']
     val = experiment_variables['val']
     query = experiment_variables['query']
-    experiment_variables['experiment_name'] = experiment_variables['experiment_name'] +'_' + flatten_mode + '_' + clpt_method + '_' + sim_method + '_' + gt_error_method
+    experiment_variables_copy['experiment_name'] = experiment_variables['experiment_name'] +'_' + flatten_mode + '_' + clpt_method + '_' + sim_method + '_' + gt_error_method
     
     # --- prepare data for experiment ---
     # 1. load data: in Uncertainty class init. Instantiate an Uncertainty instance
@@ -74,25 +75,34 @@ def run_experiment(experiment_variables):
         layer_idx.append((np.cumsum(nb_neuron_list)[i]-nb_neuron_list[i], np.cumsum(nb_neuron_list)[i]))
     # 1. correlation for overall uncty_mtx with error
     nb_class = error.shape[1]
+    nb_fc = nb_neuron_list[-1] + nb_neuron_list[-2] + nb_neuron_list[-3]
     exp_results['overall'] = pearsonr(uncty_mtx.reshape(-1), error.reshape(-1))
     exp_results['overall_no_logit'] = pearsonr(uncty_mtx[:-nb_class, :].reshape(-1), error[:-nb_class, :].reshape(-1))
-    nb_fc = nb_neuron_list[-1] + nb_neuron_list[-2] + nb_neuron_list[-3]
     exp_results['overall_no_fc'] = pearsonr(uncty_mtx[:-nb_fc, :].reshape(-1), error[:-nb_fc, :].reshape(-1))
+    
+    exp_results['bsl_overall'] = pearsonr(bl_uncty_mtx.reshape(-1), error.reshape(-1))
+    exp_results['bsl_overall_no_logit'] = pearsonr(bl_uncty_mtx[:-nb_class, :].reshape(-1), error[:-nb_class, :].reshape(-1))
+    exp_results['bsl_overall_no_fc'] = pearsonr(bl_uncty_mtx[:-nb_fc, :].reshape(-1), error[:-nb_fc, :].reshape(-1))
     # 2. correlation for class-specific, and layer-specific 
     for i in range(nb_class):
         for layer in range(len(nb_neuron_layer)):
             exp_results['layer_{}_class_{}'.format(layer, i)] = pearsonr(\
                                                                          error[layer_idx[layer][0]: layer_idx[layer][1],i],\
                                                                          uncty_mtx[layer_idx[layer][0]: layer_idx[layer][1],i])
+            exp_results['bsl_layer_{}_class_{}'.format(layer, i)] = pearsonr(\
+                                                                         error[layer_idx[layer][0]: layer_idx[layer][1],i],\
+                                                                         bl_uncty_mtx[layer_idx[layer][0]: layer_idx[layer][1],i])         
         exp_results['class_{}'.format(i)] = pearsonr(error[:,i], uncty_mtx[:,i])
         exp_results['no_logit_class_{}'.format(i)] = pearsonr(uncty_mtx[:-nb_class, i], error[:-nb_class, i])
         exp_results['no_fc_class_{}'.format(i)] = pearsonr(uncty_mtx[:-nb_fc, i], error[:-nb_fc, i])
-     
+        exp_results['bsl_class_{}'.format(i)] = pearsonr(error[:,i], bl_uncty_mtx[:,i])
+        exp_results['bsl_no_logit_class_{}'.format(i)] = pearsonr(bl_uncty_mtx[:-nb_class, i], error[:-nb_class, i])
+        exp_results['bsl_no_fc_class_{}'.format(i)] = pearsonr(bl_uncty_mtx[:-nb_fc, i], error[:-nb_fc, i])     
 
     # --- save data for further vis ---    
     # timestamp and folder for save experiment results 
     timestamp = datetime.datetime.now().strftime('%m%d_%H%M%S')
-    experiment_saved_subfolder =  experiment_variables['experiment_name'] + '_' + timestamp
+    experiment_saved_subfolder =  experiment_variables_copy['experiment_name'] + '_' + timestamp
     # create subfolder for results saving
     subdir = experiment_saved_path + '/' + experiment_saved_subfolder
     if not os.path.exists(subdir):
@@ -123,7 +133,7 @@ def run_experiment(experiment_variables):
         csvWriter.writerows(pred)
     # save the experiment variables and results
     with open(subdir+"/" + '/exp_variables.json', 'w') as js:
-        json.dump(experiment_variables, js)
+        json.dump(experiment_variables_copy, js)
     with open(subdir+"/" + '/exp_results.json', 'w') as js:
         json.dump(exp_results, js)
     
@@ -145,11 +155,12 @@ def visualize(subdir):
             ax1 = fig.add_subplot(2,2,1+i, sharey = axs[i-1])
         else:
             ax1 = fig.add_subplot(2,2,1+i)
+        
         ax1.scatter(gt_error[:, i], uncty_mtx[:, i], label = 'Proposed uncertainty score', s = 15)
-        ax1.scatter(gt_error[:, i], bl_uncty_mtx[:, i], label = 'Baseline (random)', s = 15)
+        ax1.scatter(gt_error[:, i], bl_uncty_mtx[:, i],color ='#C0C0C0', label = 'Baseline (random)', s = 15)
         ax1.set_xlabel('Gt prediction error')
         ax1.set_ylabel('Proposed uncertainty score')
-        ax1.set_title('Proposed uncertainty score and gt correlation: {:.2f}. Class = {}'\
+        ax1.set_title('Proposed uncertainty score and gt correlation: {:.2f}. Predicted class = {}'\
                       .format(pearsonr(gt_error[:,i], uncty_mtx[:,i])[0], i))
         ax1.legend(loc = 'best')
         
@@ -158,11 +169,12 @@ def visualize(subdir):
             ax2 = fig.add_subplot(2,2,3+i, sharey = axs[i])
         else:
             ax2 = fig.add_subplot(2,2,3+i)
-        ax2.plot(uncty_mtx[:, i], label = 'Proposed uncertainty score')
-        ax2.plot(gt_error[:, i], label = 'Gt prediction error')
+        sorted_gt_error_idx = np.argsort(gt_error[:, i])
+        ax2.plot(uncty_mtx[sorted_gt_error_idx, i], label = 'Proposed uncertainty score')
+        ax2.plot(gt_error[sorted_gt_error_idx, i], label = 'Gt prediction error')
         ax2.set_xlabel('Data in query dataset')
         ax2.set_ylabel('Score')
-        ax2.set_title('Alignment with gt for each corresponding data. Class = {}'.format(i))
+        ax2.set_title('Alignment with gt for each corresponding data. Predicted class = {}'.format(i))
         ax2.legend(loc = 'best')
         axs.append(ax1)
         axs.append(ax2)

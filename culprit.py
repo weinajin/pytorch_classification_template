@@ -116,7 +116,7 @@ class CulpritNeuronScore(BaseActvMap):
 #         right_actv = cls_feat[cls_label==target_class, :]
 #         wrong_actv = cls_feat[cls_label!=target_class, :]     
         right_actv = features_clone[np.all([(self.gt==target_class), (self.pred_class ==target_class)], axis = 0), :]
-        wrong_actv = features_clone[np.all([(self.gt==target_class), (self.pred_class !=target_class)], axis = 0), :]
+        wrong_actv = features_clone[np.all([(self.gt!=target_class), (self.pred_class ==target_class)], axis = 0), :]
         
         # for each neuron, get the mean activation across the full wrong/right datapoints 
         r_mean = right_actv.mean(0)#.numpy()
