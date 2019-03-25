@@ -75,8 +75,11 @@ class BaseActvMap:
                             activations = actv_map_flattened[img][kern] # fetch 1-d length HxW channelwise activations
                             nonzero_idx = torch.nonzero(activations)
                             t_out[img][kern] = len(nonzero_idx)/len(activations)
-                            log_mean = torch.mean(torch.log(activations[nonzero_idx]))
-                            weighted_median[img][kern] = torch.exp(log_mean) 
+                            if nonzero_idx.size()[0] == 0: # If nonzero index is empty, then do not pass an empty arg to torch.log()
+                                weighted_median[img][kern] = 0
+                            else:
+                                log_mean = torch.mean(torch.log(activations[nonzero_idx]))
+                                weighted_median[img][kern] = torch.exp(log_mean) 
                     # Append output after each layer        
                     activation.append(weighted_median) # 2d image x channel vector of weighted median activations
                     turnouts.append(t_out)
