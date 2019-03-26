@@ -117,7 +117,7 @@ class ExtractActivation:
         
     def record_gradient_wrt_activation_map(self, module, grad_input, grad_output):
         '''
-        record gradient 
+        record the gradient of each logit w.r.t the activations in the feature map.
         '''
         return
         
