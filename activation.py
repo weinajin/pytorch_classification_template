@@ -115,6 +115,12 @@ class ExtractActivation:
         print('*** cumulative actv map shape:', self.activation_map[self.module_seq[module]].shape)
 
         
+    def record_gradient_wrt_activation_map(self, module, grad_input, grad_output):
+        '''
+        record gradient 
+        '''
+        return
+        
         
     def extract(self):
         total_loss = 0.0
