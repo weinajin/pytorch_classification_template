@@ -76,6 +76,7 @@ class ExtractActivation:
             # register hook on last layer, i.e.: logit before softmax
             elif isinstance(current_l, torch.nn.modules.linear.Linear) and i == len(self.all_layers)-1:
                 current_l.register_forward_hook(self.record_activation_map)
+                current_l.register_backward_hook(self.
        
     
         # initialize the global variabel to record prediction and gt, and actv map 
@@ -121,7 +122,21 @@ class ExtractActivation:
         '''
         return
         
-        
+    def generate_gradients(self, input_image, target_class):
+        # Forward
+        model_output = self.model(input_image)
+        # Zero grads
+        self.model.zero_grad()
+        # Target for backprop
+        one_hot_output = torch.FloatTensor(1, model_output.size()[-1]).zero_()
+        one_hot_output[0][target_class] = 1
+        # Backward pass
+        model_output.backward(gradient=one_hot_output)
+        # Convert Pytorch variable to numpy array
+        # [0] to get rid of the first channel (1,3,224,224)
+        gradients_as_arr = self.gradients.data.numpy()[0]
+        return gradients_as_arr
+    
     def extract(self):
         total_loss = 0.0
         scalar_metrics = torch.zeros(len(self.metric_fns))
