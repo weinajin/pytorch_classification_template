@@ -50,5 +50,7 @@
         
         "tensorboardX": true,
         "log_dir": "skinmodel/runs"
-    }
+    },
+    
+    "nb_class": 2
 }

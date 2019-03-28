@@ -1,6 +1,7 @@
 import os
 import argparse
 import torch
+import torch.nn.functional as F
 from tqdm import tqdm
 import data_loader.data_loaders as module_data
 import model.loss as module_loss
@@ -34,7 +35,15 @@ class ExtractActivation:
             training=False,
             num_workers=2
         )
-
+        # to load single image to generate gradient
+        self.data_loader_singleImg = getattr(module_data, config['data_loader']['type'])(
+            config['data_loader']['args']['data_dir'],
+            batch_size= 1 , 
+            shuffle=False,
+            validation_split=0.0,
+            training=False,
+            num_workers=2
+        )
         # build model architecture
         self.model = get_instance(module_arch, 'arch', config)
 #         self.model = vgg16(pretrained=False)
@@ -68,6 +77,7 @@ class ExtractActivation:
         for i in range(len(self.all_layers)):  
             current_l = self.all_layers[i]
             prev_l = self.all_layers[i-1]
+            # register hook on the relu layers to get rectified activations
             if isinstance(current_l, torch.nn.modules.activation.ReLU):
                 if isinstance(prev_l, torch.nn.modules.conv.Conv2d) \
                 or isinstance(prev_l, torch.nn.modules.linear.Linear):
@@ -76,7 +86,10 @@ class ExtractActivation:
             # register hook on last layer, i.e.: logit before softmax
             elif isinstance(current_l, torch.nn.modules.linear.Linear) and i == len(self.all_layers)-1:
                 current_l.register_forward_hook(self.record_activation_map)
-                current_l.register_backward_hook(self.
+            # register hool on conv or fc layer to get gradient w.r.t the activations.
+            if isinstance(current_l, torch.nn.modules.conv.Conv2d) \
+            or isinstance(current_l, torch.nn.modules.linear.Linear):
+                current_l.register_backward_hook(self.record_gradient)
        
     
         # initialize the global variabel to record prediction and gt, and actv map 
@@ -89,7 +102,15 @@ class ExtractActivation:
         self.module_seq = dict()  # sequence of the actv
         self.i = 0
         self.map_shape = []
-
+        
+        # record gradient
+        nb_class = config['nb_class']
+        # compute the gradient of each class output w.r.t the  
+        self.gradient = dict() # tmp record for gradient for 1 img 1 cls
+        self.gradient_whole = dict() #[dict() for i in range(nb_class)]
+        self.grad_module_seq = dict()  # sequence of the gradient
+        self.grad_i = 0
+        self.gradmap_shape = []
     def remove_sequential(self, network):
         # source: https://discuss.pytorch.org/t/module-children-vs-module-modules/4551/5
         for layer in network.children():
@@ -116,27 +137,57 @@ class ExtractActivation:
         print('*** cumulative actv map shape:', self.activation_map[self.module_seq[module]].shape)
 
         
-    def record_gradient_wrt_activation_map(self, module, grad_input, grad_output):
+    def record_gradient(self, module, grad_input, grad_output):
         '''
-        record the gradient of each logit w.r.t the activations in the feature map.
+        record the gradient for each layer (module)
+        for each logit w.r.t the activations in the feature map.
         '''
-        return
+        # todo: record grad_input or grad_output ?
+        if module in self.grad_module_seq:
+            self.gradient[self.grad_module_seq[module]] = torch.cat((self.gradient[self.grad_module_seq[module]], grad_output.cpu()))
+        else:
+            self.grad_module_seq[module] = self.grad_i
+            self.grad_i += 1
+            self.gradmap_shape.append(opt.shape)
+            self.gradient[self.grad_module_seq[module]] = torch.Tensor()
+            self.gradient[self.grad_module_seq[module]] = torch.cat((self.gradient[self.grad_module_seq[module]], grad_output.cpu()))
+        print('*** cumulative actv map shape:', self.gradient[self.grad_module_seq[module]].shape)
+
+        print(module, grad_input.shape, grad_output.shape)
         
-    def generate_gradients(self, input_image, target_class):
+        
+    def generate_single_gradients(self, image, target_class):
+        '''generate gradient of each logit w.r.t the activations in the feature map. 
+        for each image and each target class
+        '''
+        self.gradient = dict()
         # Forward
-        model_output = self.model(input_image)
-        # Zero grads
-        self.model.zero_grad()
+        model_output = self.model(inputs)
+        softmax = F.softmax(model_output)
         # Target for backprop
         one_hot_output = torch.FloatTensor(1, model_output.size()[-1]).zero_()
+        # Zero grads
+        self.model.zero_grad()
         one_hot_output[0][target_class] = 1
         # Backward pass
         model_output.backward(gradient=one_hot_output)
         # Convert Pytorch variable to numpy array
         # [0] to get rid of the first channel (1,3,224,224)
-        gradients_as_arr = self.gradients.data.numpy()[0]
-        return gradients_as_arr
+        print('[self.gradient]', self.gradient.shape)
+        gradients_as_arr = self.gradient.data.numpy()[0]
+        return self.gradient
     
+        
+        
+
+    def get_gradients_whole(self):
+        for i, data in enumerate(tqdm(self.data_loader)):
+            inputs, target = data['image'], data['label']
+            inputs, target = inputs.to(self.device), target.to(self.device)    
+            for target_class in range(nb_class): 
+                single_grad = self.generate_single_gradients(inputs, target_class)
+             
+                    
     def extract(self):
         total_loss = 0.0
         scalar_metrics = torch.zeros(len(self.metric_fns))
@@ -157,6 +208,7 @@ class ExtractActivation:
                 loss = self.loss_fn(output, target)
                 batch_size = inputs.shape[0]
                 total_loss += loss.item() * batch_size
+
 
             # sanity check if all activation map is non-negative
             for i in self.activation_map:
