@@ -8,7 +8,7 @@ from torchvision.utils import make_grid
 from sklearn.feature_selection import VarianceThreshold
 from sklearn import svm
 from sklearn.model_selection import GridSearchCV
-
+import numpy as np
 
 
 def flatten(t):
@@ -29,7 +29,7 @@ def recast_to_flattened(act, layers=None):
             val_im_act_matrix = torch.cat([val_im_act_matrix,
                                            flatten(act[k])], dim=1)
 
-        print(val_im_act_matrix.shape)
+        print('Activation of shape {} is flattened to {}'.format(act.shape, val_im_act_matrix.shape))
 
     return val_im_act_matrix
 
@@ -46,6 +46,8 @@ def recast_to_network_shape(matrix, shape_v, val_act, binary=False, layers=None)
     binary: True if features are just True/False tensors, which came from a feature selection algorithm
             False otherwise
     layers: list of indices of layers that were concatenated
+
+    TODO: not working for FC layers! l_shape for now is 3D (CxHxW)
     """
     curr_offset = 0
     SUCCESS = 1
@@ -139,7 +141,7 @@ def data_preprocessing(path):
     # Convert the prediction probabilities to class labels
     _, pred_v_cl = torch.max(pred_v, 1)
     # The predictions are NOT SOFTMAX probabilities, so convert them
-    softmax = nn.Softmax
+    softmax = nn.Softmax(dim = 1)
     pred_v = softmax(pred_v)
     # Get the correct and incorrect prediction "ground truth". This ground truth will contain -1 if the image was incorrectly predicted, and +1 if it was correctly predicted.
     detector_gt = torch.ones([pred_v.shape[0]], dtype=torch.int32)
@@ -162,13 +164,14 @@ def data_preprocessing(path):
     sel = VarianceThreshold()
     X_s = sel.fit_transform(X) # selected_features_from_X
     selected_idx = torch.from_numpy(sel.get_support().astype(np.float32)).view(1, -1)
-    selected, _s = recast_to_network_shape(selected_idx, shape_v, val_act, binary=True)
+    # selected, _s =  recast_to_network_shape(selected_idx, shape_v, val_act, binary=True)
     ####  Visualize the selected features in terms of network activations
     mean_act = torch.mean(torch.from_numpy(X), dim=0).view(1, -1)
-    mean_act_l, _s = recast_to_network_shape(mean_act, shape_v, val_act, binary=True, layers=[0,1,2,3,4])
-    visualize(selected, mean_act_l)
+    # mean_act_l, _s = recast_to_network_shape(mean_act, shape_v, val_act, binary=True, layers=[0,1,2,3,4])
+    # visualize(selected, mean_act_l)
     print('X shape is {}, Y shape is {}.'.format(X_s.shape, Y.shape))
-    return X, Y, X_s, selected_idx, mean_act_l
+    # return X, Y, X_s, selected_idx, mean_act_l
+    return X, Y, X_s, selected_idx
 
 
 def train_svm(X, Y):
@@ -188,8 +191,10 @@ def test_svm(X_test, Y_test, selected_idx):
 
 
 def main():
-    X, Y, X_s, selected_idx, mean_act_l = data_preprocessing(val_path)
-    X_test, Y_test, _, _ = data_preprocessing(query_path)
+    # X, Y, X_s, selected_idx, mean_act_l = data_preprocessing(val_path)
+    # X_test, Y_test, _, _ = data_preprocessing(query_path)
+    X, Y, X_s, selected_idx = data_preprocessing(val_path)
+    X_test, Y_test, _, _, = data_preprocessing(query_path)
     # train the svm
     clf = train_svm(X_s, Y)
 
